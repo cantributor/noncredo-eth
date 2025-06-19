@@ -2,7 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 
@@ -10,11 +10,11 @@ import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortS
  * @title NickRegister
  * @dev User nickname register contract
  */
-contract NickRegister is Ownable {
+contract NickRegister is AccessManaged {
     uint8 public constant MIN_NICK_LENGTH = 3;
     uint8 public constant MAX_NICK_LENGTH = 31;
 
-    constructor(address initialOwner) Ownable(initialOwner) {}
+    constructor(address accessManager) AccessManaged(accessManager) {}
 
     mapping(address account => ShortString nick) private nickByAccount;
     mapping(ShortString nick => address account) private accountByNick;
@@ -68,7 +68,7 @@ contract NickRegister is Ownable {
      * @param account Nick account
      * @return nick
      */
-    function nickOf(address account) external view onlyOwner returns (string memory) {
+    function nickOf(address account) external restricted returns (string memory) {
         ShortString foundNick = nickByAccount[account];
         if (ShortStrings.byteLength(foundNick) == 0) {
             revert AccountNotRegistered(account);
@@ -81,7 +81,7 @@ contract NickRegister is Ownable {
      * @param nick Account nick
      * @return account
      */
-    function accountOf(string memory nick) external view onlyOwner returns (address) {
+    function accountOf(string memory nick) external restricted returns (address) {
         ShortString nickShortString = ShortStrings.toShortString(nick);
         address foundAccount = accountByNick[nickShortString];
         if (foundAccount == address(0)) {
@@ -131,7 +131,7 @@ contract NickRegister is Ownable {
      * @dev Get nicks total number
      * @return Nicks total number
      */
-    function nicksTotal() external view onlyOwner returns (uint32) {
+    function nicksTotal() external restricted returns (uint32) {
         return nickCounter;
     }
 
@@ -139,7 +139,7 @@ contract NickRegister is Ownable {
      * @dev Get all nicks
      * @return result All nicks array
      */
-    function getAllNicks() external view onlyOwner returns (string[] memory result) {
+    function getAllNicks() external restricted returns (string[] memory result) {
         result = new string[](allNicks.length);
         for (uint256 i = 0; i < allNicks.length; ++i) {
             result[i] = ShortStrings.toString(allNicks[i]);
