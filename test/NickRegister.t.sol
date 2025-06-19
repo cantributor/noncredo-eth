@@ -8,8 +8,8 @@ import {NickRegister} from "../src/NickRegister.sol";
 contract NickRegisterTest is Test {
     NickRegister public nickRegister;
 
-    address constant private OWNER = address(101);
-    address immutable private CALLER = address(this);
+    address private constant OWNER = address(101);
+    address private immutable CALLER = address(this);
 
     function setUp() public {
         nickRegister = new NickRegister(OWNER);
@@ -35,7 +35,9 @@ contract NickRegisterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(NickRegister.NickTooShort.selector, "al", 2, 3));
         nickRegister.registerNick("al");
 
-        vm.expectRevert(abi.encodeWithSelector(NickRegister.NickTooLong.selector, "ab123456789012345678901234567890", 32, 31));
+        vm.expectRevert(
+            abi.encodeWithSelector(NickRegister.NickTooLong.selector, "ab123456789012345678901234567890", 32, 31)
+        );
         nickRegister.registerNick("ab123456789012345678901234567890");
 
         nickRegister.registerNick("a123456789012345678901234567890");
