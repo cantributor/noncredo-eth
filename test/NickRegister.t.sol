@@ -5,20 +5,26 @@ import {Test, console} from "forge-std/Test.sol";
 import {NickRegister} from "../src/NickRegister.sol";
 import {IAccessManaged} from "../lib/openzeppelin-contracts/contracts/access/manager/IAccessManaged.sol";
 import {AccessManager} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol";
+import {ERC2771Forwarder} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
 
 contract NickRegisterTest is Test {
     AccessManager public accessManager;
     NickRegister public nickRegister;
+    TestERC2771Forwarder public testErc2771Forwarder;
+
+    uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
 
     address private constant OWNER = address(101);
     address private constant ADMIN = address(777);
-    address private immutable CALLER = address(this);
+    address private immutable USER = address(this);
+    address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     uint64 private constant ADMIN_ROLE = 7;
 
     function setUp() public {
         accessManager = new AccessManager(OWNER);
-        nickRegister = new NickRegister(address(accessManager));
+        testErc2771Forwarder = new TestERC2771Forwarder("testForwarder");
+        nickRegister = new NickRegister(address(accessManager), address(testErc2771Forwarder));
 
         vm.startPrank(address(OWNER));
 
@@ -45,7 +51,7 @@ contract NickRegisterTest is Test {
 
     function test_RevertWhen_CallerIsNotAuthorized() public {
         bytes memory encodedUnauthorized =
-            abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, CALLER);
+            abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER);
 
         vm.expectRevert(encodedUnauthorized);
         nickRegister.nicksTotal();
@@ -124,7 +130,7 @@ contract NickRegisterTest is Test {
         vm.startPrank(address(ADMIN));
 
         assertEq(nickRegister.nickOf(OWNER), "owner");
-        assertEq(nickRegister.nickOf(CALLER), "user");
+        assertEq(nickRegister.nickOf(USER), "user");
 
         vm.stopPrank();
     }
@@ -135,7 +141,7 @@ contract NickRegisterTest is Test {
         vm.startPrank(address(ADMIN));
 
         assertEq(nickRegister.accountOf("owner"), OWNER);
-        assertEq(nickRegister.accountOf("user"), CALLER);
+        assertEq(nickRegister.accountOf("user"), USER);
 
         vm.stopPrank();
     }
@@ -150,14 +156,75 @@ contract NickRegisterTest is Test {
     function test_emit_SuccessfulNickRegistration() public {
         vm.expectEmit(true, true, false, false);
 
-        emit NickRegister.SuccessfulNickRegistration(address(CALLER), "user");
+        emit NickRegister.SuccessfulNickRegistration(address(USER), "user");
 
         nickRegister.registerNick("user");
+    }
+
+    function test_MetaTransaction() public {
+        vm.prank(address(ADMIN));
+        assertEq(nickRegister.nicksTotal(), 0);
+
+        ERC2771Forwarder.ForwardRequestData memory request = ERC2771Forwarder.ForwardRequestData({
+            from: SIGNER,
+            to: address(nickRegister),
+            data: abi.encodeCall(NickRegister.registerNick, ("signer")),
+            value: 0,
+            gas: 1000000,
+            deadline: uint48(block.timestamp + 1),
+            signature: "" // should be overriden with util_signRequestData
+        });
+
+        util_signRequestData(request, testErc2771Forwarder.nonces(SIGNER));
+
+        testErc2771Forwarder.execute(request);
+
+        vm.prank(address(ADMIN));
+        assertEq(nickRegister.nicksTotal(), 1);
+
+        vm.prank(address(ADMIN));
+        assertEq(nickRegister.nickOf(SIGNER), "signer");
     }
 
     function util_RegisterOwnerAndUser() private {
         nickRegister.registerNick("user");
         vm.prank(address(OWNER));
         nickRegister.registerNick("owner");
+    }
+
+    function util_signRequestData(ERC2771Forwarder.ForwardRequestData memory request, uint256 nonce)
+        private
+        view
+        returns (ERC2771Forwarder.ForwardRequestData memory)
+    {
+        bytes32 digest = testErc2771Forwarder.forwardRequestStructHash(request, nonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, digest);
+        request.signature = abi.encodePacked(r, s, v);
+        return request;
+    }
+}
+
+contract TestERC2771Forwarder is ERC2771Forwarder {
+    constructor(string memory name) ERC2771Forwarder(name) {}
+
+    function forwardRequestStructHash(ERC2771Forwarder.ForwardRequestData calldata request, uint256 nonce)
+        external
+        view
+        returns (bytes32)
+    {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    _FORWARD_REQUEST_TYPEHASH,
+                    request.from,
+                    request.to,
+                    request.value,
+                    request.gas,
+                    nonce,
+                    request.deadline,
+                    keccak256(request.data)
+                )
+            )
+        );
     }
 }

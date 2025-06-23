@@ -3,18 +3,22 @@
 pragma solidity 0.8.28;
 
 import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
-import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 
 /**
  * @title NickRegister
  * @dev User nickname register contract
  */
-contract NickRegister is AccessManaged {
+contract NickRegister is AccessManaged, ERC2771Context {
     uint8 public constant MIN_NICK_LENGTH = 3;
     uint8 public constant MAX_NICK_LENGTH = 31;
 
-    constructor(address accessManager) AccessManaged(accessManager) {}
+    constructor(address accessManager, address trustedForwarder)
+        AccessManaged(accessManager)
+        ERC2771Context(trustedForwarder)
+    {}
 
     mapping(address account => ShortString nick) private nickByAccount;
     mapping(ShortString nick => address account) private accountByNick;
@@ -95,7 +99,7 @@ contract NickRegister is AccessManaged {
      * @return caller nick
      */
     function myNick() external view returns (string memory) {
-        address account = msg.sender;
+        address account = _msgSender();
         ShortString foundNick = nickByAccount[account];
         if (ShortStrings.byteLength(foundNick) == 0) {
             revert AccountNotRegistered(account);
@@ -120,11 +124,12 @@ contract NickRegister is AccessManaged {
         if (foundAccount != address(0)) {
             revert NickAlreadyRegistered(nick);
         }
-        nickByAccount[msg.sender] = nickShortString;
-        accountByNick[nickShortString] = msg.sender;
+        address msgSender = _msgSender();
+        nickByAccount[msgSender] = nickShortString;
+        accountByNick[nickShortString] = msgSender;
         allNicks.push(nickShortString);
         nickCounter++;
-        emit SuccessfulNickRegistration(msg.sender, nick);
+        emit SuccessfulNickRegistration(msgSender, nick);
     }
 
     /**
@@ -145,5 +150,17 @@ contract NickRegister is AccessManaged {
             result[i] = ShortStrings.toString(allNicks[i]);
         }
         return result;
+    }
+
+    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
+    }
+
+    function _msgSender() internal view virtual override(ERC2771Context, Context) returns (address) {
+        return ERC2771Context._msgSender();
+    }
+
+    function _msgData() internal view virtual override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
     }
 }
