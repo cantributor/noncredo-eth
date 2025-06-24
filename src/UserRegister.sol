@@ -4,14 +4,15 @@ pragma solidity 0.8.28;
 
 import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
 import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
+import "./User.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 
 /**
- * @title NickRegister
- * @dev User nickname register contract
+ * @title UserRegister
+ * @dev User register contract
  */
-contract NickRegister is AccessManaged, ERC2771Context {
+contract UserRegister is AccessManaged, ERC2771Context {
     uint8 public constant MIN_NICK_LENGTH = 3;
     uint8 public constant MAX_NICK_LENGTH = 31;
 
@@ -20,11 +21,8 @@ contract NickRegister is AccessManaged, ERC2771Context {
         ERC2771Context(trustedForwarder)
     {}
 
-    mapping(address account => ShortString nick) private nickByAccount;
-    mapping(ShortString nick => address account) private accountByNick;
-
-    ShortString[] private allNicks;
-    uint32 private nickCounter;
+    mapping(address account => User user) private userByAccount;
+    mapping(ShortString nick => User user) private userByNick;
 
     /**
      * @dev Trying to get unregistered account nickname
@@ -61,57 +59,50 @@ contract NickRegister is AccessManaged, ERC2771Context {
     error NickAlreadyRegistered(string nick);
 
     /**
+     * @dev Account already registered
+     * @param account Already registered account
+     */
+    error AccountAlreadyRegistered(address account);
+
+    /**
      * @dev Nick successfully registered
      * @param account Nick account
      * @param nick Registered nick
      */
-    event SuccessfulNickRegistration(address indexed account, string indexed nick);
+    event SuccessfulUserRegistration(address indexed account, string indexed nick);
 
     /**
-     * @dev Get nick of account
-     * @param account Nick account
+     * @dev Get user of account
+     * @param account User account
      * @return nick
      */
-    function nickOf(address account) external restricted returns (string memory) {
-        ShortString foundNick = nickByAccount[account];
-        if (ShortStrings.byteLength(foundNick) == 0) {
+    function userOf(address account) external restricted returns (User) {
+        User foundUser = userByAccount[account];
+        if (address(foundUser) == address(0)) {
             revert AccountNotRegistered(account);
         }
-        return ShortStrings.toString(foundNick);
+        return foundUser;
     }
 
     /**
-     * @dev Get account of nick
+     * @dev Get user of nick
      * @param nick Account nick
-     * @return account
+     * @return user
      */
-    function accountOf(string memory nick) external restricted returns (address) {
+    function userOf(string memory nick) external restricted returns (User) {
         ShortString nickShortString = ShortStrings.toShortString(nick);
-        address foundAccount = accountByNick[nickShortString];
-        if (foundAccount == address(0)) {
+        User user = userByNick[nickShortString];
+        if (address(user) == address(0)) {
             revert NickNotRegistered(nick);
         }
-        return foundAccount;
+        return user;
     }
 
     /**
-     * @dev Get nick of caller
-     * @return caller nick
-     */
-    function myNick() external view returns (string memory) {
-        address account = _msgSender();
-        ShortString foundNick = nickByAccount[account];
-        if (ShortStrings.byteLength(foundNick) == 0) {
-            revert AccountNotRegistered(account);
-        }
-        return ShortStrings.toString(foundNick);
-    }
-
-    /**
-     * @dev Register nick for account
+     * @dev Register user for account
      * @param nick Nick for registration
      */
-    function registerNick(string calldata nick) external {
+    function registerUser(string calldata nick) external {
         bytes memory nickBytes = bytes(nick);
         if (nickBytes.length > MAX_NICK_LENGTH) {
             revert NickTooLong(nick, nickBytes.length, MAX_NICK_LENGTH);
@@ -120,36 +111,19 @@ contract NickRegister is AccessManaged, ERC2771Context {
             revert NickTooShort(nick, nickBytes.length, MIN_NICK_LENGTH);
         }
         ShortString nickShortString = ShortStrings.toShortString(nick);
-        address foundAccount = accountByNick[nickShortString];
-        if (foundAccount != address(0)) {
+        address foundByNick = address(userByNick[nickShortString]);
+        if (foundByNick != address(0)) {
             revert NickAlreadyRegistered(nick);
         }
         address msgSender = _msgSender();
-        nickByAccount[msgSender] = nickShortString;
-        accountByNick[nickShortString] = msgSender;
-        allNicks.push(nickShortString);
-        nickCounter++;
-        emit SuccessfulNickRegistration(msgSender, nick);
-    }
-
-    /**
-     * @dev Get nicks total number
-     * @return Nicks total number
-     */
-    function nicksTotal() external restricted returns (uint32) {
-        return nickCounter;
-    }
-
-    /**
-     * @dev Get all nicks
-     * @return result All nicks array
-     */
-    function getAllNicks() external restricted returns (string[] memory result) {
-        result = new string[](allNicks.length);
-        for (uint256 i = 0; i < allNicks.length; ++i) {
-            result[i] = ShortStrings.toString(allNicks[i]);
+        address foundByAccount = address(userByAccount[msgSender]);
+        if (foundByAccount != address(0)) {
+            revert AccountAlreadyRegistered(msgSender);
         }
-        return result;
+        User user = new User(msgSender, nickShortString);
+        userByNick[nickShortString] = user;
+        userByAccount[msgSender] = user;
+        emit SuccessfulUserRegistration(msgSender, nick);
     }
 
     function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
