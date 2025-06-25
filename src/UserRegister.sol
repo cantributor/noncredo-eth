@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 
 import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
 import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
+import "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
 import {EnumerableSet} from "../lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
@@ -26,6 +27,8 @@ contract UserRegister is AccessManaged, ERC2771Context {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private userAccounts;
+
+    address private userLibraryAddress = address(new User());
 
     /**
      * @dev Trying to get unregistered account
@@ -112,7 +115,8 @@ contract UserRegister is AccessManaged, ERC2771Context {
         if (foundByAccount != address(0)) {
             revert AccountAlreadyRegistered(msgSender);
         }
-        User user = new User(msgSender, nickShortString);
+        User user = User(Clones.clone(userLibraryAddress));
+        user.initialize(msgSender, nickShortString);
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         EnumerableSet.add(userAccounts, msgSender);
