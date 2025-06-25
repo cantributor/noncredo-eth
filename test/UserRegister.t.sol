@@ -6,7 +6,6 @@ import {UserRegister} from "../src/UserRegister.sol";
 import {IAccessManaged} from "../lib/openzeppelin-contracts/contracts/access/manager/IAccessManaged.sol";
 import {AccessManager} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol";
 import {ERC2771Forwarder} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
-import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {UserUtils} from "../src/UserUtils.sol";
 
 contract UserFactoryTest is Test {
@@ -86,8 +85,8 @@ contract UserFactoryTest is Test {
 
         vm.startPrank(address(ADMIN));
 
-        assertEq(ShortStrings.toString(userRegister.userOf(OWNER).nick()), "owner");
-        assertEq(ShortStrings.toString(userRegister.userOf(USER).nick()), "user");
+        assertEq(userRegister.userOf(OWNER).getNick(), "owner");
+        assertEq(userRegister.userOf(USER).getNick(), "user");
 
         vm.stopPrank();
     }
@@ -97,8 +96,8 @@ contract UserFactoryTest is Test {
 
         vm.startPrank(address(ADMIN));
 
-        assertEq(ShortStrings.toString(userRegister.userOf("owner").nick()), "owner");
-        assertEq(ShortStrings.toString(userRegister.userOf("user").nick()), "user");
+        assertEq(userRegister.userOf("owner").getNick(), "owner");
+        assertEq(userRegister.userOf("user").getNick(), "user");
 
         vm.stopPrank();
     }
@@ -106,7 +105,7 @@ contract UserFactoryTest is Test {
     function test_me() public {
         util_RegisterOwnerAndUser();
 
-        assertEq(ShortStrings.toString(userRegister.me().nick()), "user");
+        assertEq(userRegister.me().getNick(), "user");
     }
 
     function test_getTotalUsers() public {
@@ -164,7 +163,7 @@ contract UserFactoryTest is Test {
         testErc2771Forwarder.execute(request);
 
         vm.prank(address(ADMIN));
-        assertEq(ShortStrings.toString(userRegister.userOf(SIGNER).nick()), "signer");
+        assertEq(userRegister.userOf(SIGNER).getNick(), "signer");
     }
 
     function util_RegisterOwnerAndUser() private {

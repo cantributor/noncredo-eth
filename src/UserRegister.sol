@@ -137,7 +137,7 @@ contract UserRegister is AccessManaged, ERC2771Context {
         for (uint256 i = 0; i < totalUsers; ++i) {
             address account = EnumerableSet.at(userAccounts, i);
             User user = userByAccount[account];
-            result[i] = ShortStrings.toString(user.nick());
+            result[i] = user.getNick();
         }
         return result;
     }
