@@ -6,7 +6,10 @@ import {UserRegister} from "../src/UserRegister.sol";
 import {IAccessManaged} from "../lib/openzeppelin-contracts/contracts/access/manager/IAccessManaged.sol";
 import {AccessManager} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol";
 import {ERC2771Forwarder} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
+import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {Initializable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 import {UserUtils} from "../src/UserUtils.sol";
+import {User} from "../src/User.sol";
 
 contract UserFactoryTest is Test {
     AccessManager public accessManager;
@@ -143,6 +146,15 @@ contract UserFactoryTest is Test {
         emit UserRegister.SuccessfulUserRegistration(address(USER), "user");
 
         userRegister.registerUser("user");
+    }
+
+    function test_RevertWhen_TryingToReinitializeUser() public {
+        userRegister.registerUser("user");
+
+        User user = userRegister.me();
+
+        vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
+        user.initialize(USER, ShortStrings.toShortString("hacker"));
     }
 
     function test_MetaTransaction() public {
