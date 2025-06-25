@@ -4,10 +4,11 @@ pragma solidity 0.8.28;
 
 import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
 import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
-import {User} from "./User.sol";
-import {UserUtils} from "./UserUtils.sol";
+import {EnumerableSet} from "../lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {UserUtils} from "./UserUtils.sol";
+import {User} from "./User.sol";
 
 /**
  * @title UserRegister
@@ -21,6 +22,10 @@ contract UserRegister is AccessManaged, ERC2771Context {
 
     mapping(address account => User user) private userByAccount;
     mapping(ShortString nick => User user) private userByNick;
+
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    EnumerableSet.AddressSet private userAccounts;
 
     /**
      * @dev Trying to get unregistered account
@@ -110,7 +115,31 @@ contract UserRegister is AccessManaged, ERC2771Context {
         User user = new User(msgSender, nickShortString);
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
+        EnumerableSet.add(userAccounts, msgSender);
         emit SuccessfulUserRegistration(msgSender, nick);
+    }
+
+    /**
+     * @dev Get total number of users
+     * @return total number of users
+     */
+    function getTotalUsers() external view returns (uint256) {
+        return EnumerableSet.length(userAccounts);
+    }
+
+    /**
+     * @dev Get all nicks
+     * @return result All nicks array
+     */
+    function getAllNicks() external view returns (string[] memory result) {
+        uint256 totalUsers = EnumerableSet.length(userAccounts);
+        result = new string[](totalUsers);
+        for (uint256 i = 0; i < totalUsers; ++i) {
+            address account = EnumerableSet.at(userAccounts, i);
+            User user = userByAccount[account];
+            result[i] = ShortStrings.toString(user.nick());
+        }
+        return result;
     }
 
     function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {

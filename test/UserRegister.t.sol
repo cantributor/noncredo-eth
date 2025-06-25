@@ -109,6 +109,25 @@ contract UserFactoryTest is Test {
         assertEq(ShortStrings.toString(userRegister.me().nick()), "user");
     }
 
+    function test_getTotalUsers() public {
+        assertEq(userRegister.getTotalUsers(), 0);
+
+        util_RegisterOwnerAndUser();
+
+        assertEq(userRegister.getTotalUsers(), 2);
+    }
+
+    function test_getAllNicks() public {
+        assertEq(userRegister.getAllNicks().length, 0);
+
+        util_RegisterOwnerAndUser();
+
+        string[] memory expectedNicks = new string[](2);
+        expectedNicks[0] = "user";
+        expectedNicks[1] = "owner";
+        assertEq(userRegister.getAllNicks(), expectedNicks);
+    }
+
     function test_RevertWhen_AlreadyExists() public {
         util_RegisterOwnerAndUser();
 
