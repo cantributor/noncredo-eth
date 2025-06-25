@@ -7,6 +7,7 @@ import {IAccessManaged} from "../lib/openzeppelin-contracts/contracts/access/man
 import {AccessManager} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol";
 import {ERC2771Forwarder} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Forwarder.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {UserUtils} from "../src/UserUtils.sol";
 
 contract UserFactoryTest is Test {
     AccessManager public accessManager;
@@ -54,11 +55,11 @@ contract UserFactoryTest is Test {
     }
 
     function test_RevertWhen_NickTooShortOrTooLong() public {
-        vm.expectRevert(abi.encodeWithSelector(UserRegister.NickTooShort.selector, "al", 2, 3));
+        vm.expectRevert(abi.encodeWithSelector(UserUtils.NickTooShort.selector, "al", 2, 3));
         userRegister.registerUser("al");
 
         vm.expectRevert(
-            abi.encodeWithSelector(UserRegister.NickTooLong.selector, "ab123456789012345678901234567890", 32, 31)
+            abi.encodeWithSelector(UserUtils.NickTooLong.selector, "ab123456789012345678901234567890", 32, 31)
         );
         userRegister.registerUser("ab123456789012345678901234567890");
 

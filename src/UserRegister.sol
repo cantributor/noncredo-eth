@@ -4,7 +4,8 @@ pragma solidity 0.8.28;
 
 import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
 import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
-import "./User.sol";
+import {User} from "./User.sol";
+import {UserUtils} from "./UserUtils.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 
@@ -13,9 +14,6 @@ import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortSt
  * @dev User register contract
  */
 contract UserRegister is AccessManaged, ERC2771Context {
-    uint8 public constant MIN_NICK_LENGTH = 3;
-    uint8 public constant MAX_NICK_LENGTH = 31;
-
     constructor(address accessManager, address trustedForwarder)
         AccessManaged(accessManager)
         ERC2771Context(trustedForwarder)
@@ -25,32 +23,16 @@ contract UserRegister is AccessManaged, ERC2771Context {
     mapping(ShortString nick => User user) private userByNick;
 
     /**
-     * @dev Trying to get unregistered account nickname
+     * @dev Trying to get unregistered account
      * @param account Unregistered account
      */
     error AccountNotRegistered(address account);
 
     /**
-     * @dev Trying to get unregistered nickname account
+     * @dev Trying to get unregistered nickname user
      * @param nick Unregistered nick
      */
     error NickNotRegistered(string nick);
-
-    /**
-     * @dev Too short nick
-     * @param nick Too short nick
-     * @param length Nick length
-     * @param correctLength Correct length
-     */
-    error NickTooShort(string nick, uint256 length, uint8 correctLength);
-
-    /**
-     * @dev Too long nick
-     * @param nick Too long nick
-     * @param length Nick length
-     * @param correctLength Correct length
-     */
-    error NickTooLong(string nick, uint256 length, uint8 correctLength);
 
     /**
      * @dev Nick already registered
@@ -74,7 +56,7 @@ contract UserRegister is AccessManaged, ERC2771Context {
     /**
      * @dev Get user of account
      * @param account User account
-     * @return nick
+     * @return user of account
      */
     function userOf(address account) external restricted returns (User) {
         User foundUser = userByAccount[account];
@@ -103,14 +85,7 @@ contract UserRegister is AccessManaged, ERC2771Context {
      * @param nick Nick for registration
      */
     function registerUser(string calldata nick) external {
-        bytes memory nickBytes = bytes(nick);
-        if (nickBytes.length > MAX_NICK_LENGTH) {
-            revert NickTooLong(nick, nickBytes.length, MAX_NICK_LENGTH);
-        }
-        if (nickBytes.length < MIN_NICK_LENGTH) {
-            revert NickTooShort(nick, nickBytes.length, MIN_NICK_LENGTH);
-        }
-        ShortString nickShortString = ShortStrings.toShortString(nick);
+        ShortString nickShortString = UserUtils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
             revert NickAlreadyRegistered(nick);
