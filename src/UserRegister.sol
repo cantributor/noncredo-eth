@@ -81,6 +81,18 @@ contract UserRegister is AccessManaged, ERC2771Context {
     }
 
     /**
+     * @dev Get user of current account
+     * @return user of current account
+     */
+    function me() external view returns (User) {
+        User foundUser = userByAccount[_msgSender()];
+        if (address(foundUser) == address(0)) {
+            revert AccountNotRegistered(_msgSender());
+        }
+        return foundUser;
+    }
+
+    /**
      * @dev Register user for account
      * @param nick Nick for registration
      */

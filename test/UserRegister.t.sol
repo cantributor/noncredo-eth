@@ -67,6 +67,9 @@ contract UserFactoryTest is Test {
     }
 
     function test_RevertWhen_NotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(UserRegister.AccountNotRegistered.selector, USER));
+        userRegister.me();
+
         vm.startPrank(address(ADMIN));
 
         vm.expectRevert(abi.encodeWithSelector(UserRegister.NickNotRegistered.selector, "nick"));
@@ -98,6 +101,12 @@ contract UserFactoryTest is Test {
         assertEq(ShortStrings.toString(userRegister.userOf("user").nick()), "user");
 
         vm.stopPrank();
+    }
+
+    function test_me() public {
+        util_RegisterOwnerAndUser();
+
+        assertEq(ShortStrings.toString(userRegister.me().nick()), "user");
     }
 
     function test_RevertWhen_AlreadyExists() public {
