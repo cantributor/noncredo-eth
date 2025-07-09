@@ -2,20 +2,28 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
-import "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
-import "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
+import {Roles} from "../src/Roles.sol";
+import {User} from "./User.sol";
+import {UserUtils} from "./UserUtils.sol";
+
+import {Initializable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
+import {AccessManager} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol";
+import {AccessManaged} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
+import {ERC2771Context} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
+import {Context} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
+import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {EnumerableSet} from "../lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
-import {UserUtils} from "./UserUtils.sol";
-import {User} from "./User.sol";
+
+import {console} from "../lib/forge-std/src/console.sol";
 
 /**
  * @title UserRegister
  * @dev User register contract
  */
-contract UserRegister is AccessManaged, ERC2771Context {
+contract UserRegister is AccessManaged, ERC2771Context, UUPSUpgradeable {
     constructor(address accessManager, address trustedForwarder)
         AccessManaged(accessManager)
         ERC2771Context(trustedForwarder)
@@ -60,6 +68,14 @@ contract UserRegister is AccessManaged, ERC2771Context {
      * @param nick Registered nick
      */
     event SuccessfulUserRegistration(address indexed account, string indexed nick);
+
+    /**
+     * @dev Get contract version
+     * @return contract version
+     */
+    function getVersion() external view virtual returns (string memory) {
+        return "0.0.0";
+    }
 
     /**
      * @dev Get user of account
@@ -144,6 +160,21 @@ contract UserRegister is AccessManaged, ERC2771Context {
             result[i] = user.getNick();
         }
         return result;
+    }
+
+    /**
+     * @dev Upgrade authorization
+     */
+    function _authorizeUpgrade(address) internal view override {
+        console.log("_authorizeUpgrade msg.sender: ", msg.sender);
+        console.log("_authorizeUpgrade this: ", address(this));
+        //        (bool authorized,) = AccessManager(authority()).hasRole(Roles.ADMIN_ROLE, msg.sender);
+        console.log("authority(): ", authority());
+        console.log("trustedForwarder(): ", trustedForwarder());
+        //        if (!authorized) {
+        //            console.log("upgrader: ", msg.sender);
+        //            revert AccessManagedUnauthorized(msg.sender);
+        //        }
     }
 
     function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
