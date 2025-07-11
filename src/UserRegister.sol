@@ -6,13 +6,19 @@ import {Roles} from "../src/Roles.sol";
 import {User} from "./User.sol";
 import {UserUtils} from "./UserUtils.sol";
 
-import {Initializable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
-import {AccessManager} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol";
-import {AccessManaged} from "../lib/openzeppelin-contracts/contracts/access/manager/AccessManaged.sol";
-import {ERC2771Context} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
-import {Context} from "../lib/openzeppelin-contracts/contracts/metatx/ERC2771Context.sol";
+import {AccessManagedUpgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagedUpgradeable.sol";
+//import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+import {AccessManagerUpgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagerUpgradeable.sol";
+import {AccessManagedUpgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagedUpgradeable.sol";
+import {ERC2771ContextUpgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/metatx/ERC2771ContextUpgradeable.sol";
+import {ContextUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
 import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
-import {UUPSUpgradeable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {EnumerableSet} from "../lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
@@ -23,11 +29,16 @@ import {console} from "../lib/forge-std/src/console.sol";
  * @title UserRegister
  * @dev User register contract
  */
-contract UserRegister is AccessManaged, ERC2771Context, UUPSUpgradeable {
-    constructor(address accessManager, address trustedForwarder)
-        AccessManaged(accessManager)
-        ERC2771Context(trustedForwarder)
-    {}
+contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {
+        _disableInitializers();
+    }
+
+    function initialize(address initialAuthority) public initializer {
+        __AccessManaged_init(initialAuthority);
+        __UUPSUpgradeable_init();
+    }
 
     mapping(address account => User user) private userByAccount;
     mapping(ShortString nick => User user) private userByNick;
@@ -68,14 +79,6 @@ contract UserRegister is AccessManaged, ERC2771Context, UUPSUpgradeable {
      * @param nick Registered nick
      */
     event SuccessfulUserRegistration(address indexed account, string indexed nick);
-
-    /**
-     * @dev Get contract version
-     * @return contract version
-     */
-    function getVersion() external view virtual returns (string memory) {
-        return "0.0.0";
-    }
 
     /**
      * @dev Get user of account
@@ -131,7 +134,8 @@ contract UserRegister is AccessManaged, ERC2771Context, UUPSUpgradeable {
         if (foundByAccount != address(0)) {
             revert AccountAlreadyRegistered(msgSender);
         }
-        User user = User(Clones.clone(userLibraryAddress));
+        //        User user = User(Clones.clone(userLibraryAddress));
+        User user = new User();
         user.initialize(msgSender, nickShortString);
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
@@ -165,7 +169,7 @@ contract UserRegister is AccessManaged, ERC2771Context, UUPSUpgradeable {
     /**
      * @dev Upgrade authorization
      */
-    function _authorizeUpgrade(address) internal view override {
+    function _authorizeUpgrade(address) internal override restricted {
         console.log("_authorizeUpgrade msg.sender: ", msg.sender);
         console.log("_authorizeUpgrade this: ", address(this));
         //        (bool authorized,) = AccessManager(authority()).hasRole(Roles.ADMIN_ROLE, msg.sender);
@@ -177,15 +181,33 @@ contract UserRegister is AccessManaged, ERC2771Context, UUPSUpgradeable {
         //        }
     }
 
-    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
-        return ERC2771Context._contextSuffixLength();
+    function _contextSuffixLength()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (uint256)
+    {
+        return ERC2771ContextUpgradeable._contextSuffixLength();
     }
 
-    function _msgSender() internal view virtual override(ERC2771Context, Context) returns (address) {
-        return ERC2771Context._msgSender();
+    function _msgSender()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (address)
+    {
+        return ERC2771ContextUpgradeable._msgSender();
     }
 
-    function _msgData() internal view virtual override(ERC2771Context, Context) returns (bytes calldata) {
-        return ERC2771Context._msgData();
+    function _msgData()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (bytes calldata)
+    {
+        return ERC2771ContextUpgradeable._msgData();
     }
 }
