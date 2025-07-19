@@ -6,9 +6,9 @@ import {Roles} from "../src/Roles.sol";
 import {User} from "./User.sol";
 import {UserUtils} from "./UserUtils.sol";
 
-import {AccessManagedUpgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagedUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {UpgradeableBeacon} from
+    "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import {AccessManagerUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagerUpgradeable.sol";
@@ -22,7 +22,7 @@ import {EnumerableSet} from "../lib/openzeppelin-contracts/contracts/utils/struc
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {BeaconProxy} from "../lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
 
 /**
  * @title UserRegister
@@ -34,11 +34,6 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         _disableInitializers();
     }
 
-    function initialize(address initialAuthority) public initializer {
-        __AccessManaged_init(initialAuthority);
-        __UUPSUpgradeable_init();
-    }
-
     mapping(address account => User user) private userByAccount;
     mapping(ShortString nick => User user) private userByNick;
 
@@ -46,7 +41,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
 
     EnumerableSet.AddressSet private userAccounts;
 
-    address private userLibraryAddress = address(new User());
+    UpgradeableBeacon private userUpgradeableBeacon;
 
     /**
      * @dev Trying to get unregistered account
@@ -78,6 +73,16 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
      * @param nick Registered nick
      */
     event SuccessfulUserRegistration(address indexed account, string indexed nick);
+
+    /**
+     * @dev Initializable implementation
+     * @param initialAuthority Access manager
+     */
+    function initialize(address initialAuthority) public initializer {
+        __AccessManaged_init(initialAuthority);
+        __UUPSUpgradeable_init();
+        userUpgradeableBeacon = new UpgradeableBeacon(address(new User()), address(this));
+    }
 
     /**
      * @dev Get user of account
@@ -133,9 +138,11 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         if (foundByAccount != address(0)) {
             revert AccountAlreadyRegistered(msgSender);
         }
-        //        User user = User(Clones.clone(userLibraryAddress));
-        User user = new User();
-        user.initialize(msgSender, nickShortString);
+        BeaconProxy userBeaconProxy = new BeaconProxy(
+            address(userUpgradeableBeacon),
+            abi.encodeWithSignature("initialize(address,bytes32)", msgSender, nickShortString)
+        );
+        User user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         EnumerableSet.add(userAccounts, msgSender);
@@ -166,10 +173,21 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
     }
 
     /**
+     * @dev Upgrade user implementation
+     * @param newImplementation New User contract implementation
+     */
+    function upgradeUserImplementation(address newImplementation) external virtual restricted {
+        userUpgradeableBeacon.upgradeTo(newImplementation);
+    }
+
+    /**
      * @dev Upgrade authorization
      */
     function _authorizeUpgrade(address) internal override restricted {}
 
+    /**
+     * @dev Necessary override
+     */
     function _contextSuffixLength()
         internal
         view
@@ -180,6 +198,9 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         return ERC2771ContextUpgradeable._contextSuffixLength();
     }
 
+    /**
+     * @dev Necessary override
+     */
     function _msgSender()
         internal
         view
@@ -190,6 +211,9 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         return ERC2771ContextUpgradeable._msgSender();
     }
 
+    /**
+     * @dev Necessary override
+     */
     function _msgData()
         internal
         view

@@ -33,6 +33,7 @@ contract UserFactoryTest is Test {
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     UserRegister private userRegisterV2;
+    User private userV2;
 
     function setUp() public {
         accessManagerUpgradeable = new AccessManagerUpgradeable();
@@ -48,6 +49,7 @@ contract UserFactoryTest is Test {
         );
 
         userRegisterV2 = new UserRegisterV2(address(testErc2771Forwarder));
+        userV2 = new UserV2();
 
         vm.startPrank(address(OWNER));
 
@@ -63,6 +65,12 @@ contract UserFactoryTest is Test {
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
         accessManagerUpgradeable.setTargetFunctionRole(
             address(erc1967Proxy), upgradeToAndCallSelector, Roles.ADMIN_ROLE
+        );
+
+        bytes4[] memory upgradeUserImplementationSelector = new bytes4[](1);
+        upgradeUserImplementationSelector[0] = bytes4(keccak256("upgradeUserImplementation(address)"));
+        accessManagerUpgradeable.setTargetFunctionRole(
+            address(erc1967Proxy), upgradeUserImplementationSelector, Roles.ADMIN_ROLE
         );
 
         accessManagerUpgradeable.grantRole(Roles.ADMIN_ROLE, ADMIN, 0);
@@ -135,11 +143,7 @@ contract UserFactoryTest is Test {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
 
-        vm.prank(address(ADMIN));
-
-        (bool success, bytes memory result) =
-            address(erc1967Proxy).call(abi.encodeWithSignature("userOf(string)", "user"));
-        assertEq("user", util_ResultAsUser(success, result).getNick());
+        assertEq("user", util_UserOf("user").getNick());
     }
 
     function test_me() public {
@@ -223,25 +227,50 @@ contract UserFactoryTest is Test {
         assertEq("signer", util_ResultAsUser(success, result).getNick());
     }
 
-    function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {
+    function test_Upgrade_UserRegister_RevertWhen_CallerIsNotAuthorized() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
-        util_upgradeToV2();
+        util_upgradeUserRegisterToV2();
     }
 
-    function test_Upgrade_RevertWhen_DirectUpgrade() public {
+    function test_Upgrade_UserRegister_RevertWhen_DirectUpgrade() public {
         vm.expectRevert(abi.encodeWithSelector(UUPSUpgradeable.UUPSUnauthorizedCallContext.selector));
         userRegister.upgradeToAndCall(
             address(userRegisterV2), abi.encodeWithSignature("initialize(address)", accessManagerUpgradeable)
         );
     }
 
-    function test_Upgrade_Successful() public {
+    function test_Upgrade_UserRegister_Successful() public {
         util_RegisterAccount(USER, "user");
         assertEq(util_getTotalUsers(), 1);
 
         vm.prank(ADMIN);
-        util_upgradeToV2();
+        util_upgradeUserRegisterToV2();
         assertEq(util_getTotalUsers(), 777);
+    }
+
+    function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
+        util_upgradeUserToV2();
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
+        userRegister.upgradeUserImplementation(address(userV2));
+    }
+
+    function test_Upgrade_User_Successful() public {
+        console.log(string.concat("abc", "123"));
+
+        util_RegisterAccount(USER, "user");
+        assertEq("user", util_UserOf("user").getNick());
+
+        vm.prank(ADMIN);
+        util_upgradeUserToV2();
+
+        util_RegisterAccount(OWNER, "owner");
+
+        assertEq("user_V1", util_UserOf("user").getNick());
+        assertEq("owner_V1", util_UserOf("owner").getNick());
+
+        assertEq("user_V2", UserV2(address(util_UserOf("user"))).getNickV2());
     }
 
     function util_RegisterAccount(address account, string memory nick) private {
@@ -256,6 +285,14 @@ contract UserFactoryTest is Test {
         return user;
     }
 
+    function util_UserOf(string memory nick) private returns (User) {
+        vm.prank(address(ADMIN));
+
+        (bool success, bytes memory result) =
+            address(erc1967Proxy).call(abi.encodeWithSignature("userOf(string)", nick));
+        return util_ResultAsUser(success, result);
+    }
+
     function util_getTotalUsers() private returns (uint256) {
         (bool success, bytes memory result) = address(erc1967Proxy).call(abi.encodeWithSignature("getTotalUsers()"));
         assertTrue(success);
@@ -263,9 +300,16 @@ contract UserFactoryTest is Test {
         return totalUsers;
     }
 
-    function util_upgradeToV2() private {
+    function util_upgradeUserRegisterToV2() private {
         (bool success,) =
             address(erc1967Proxy).call(abi.encodeWithSignature("upgradeToAndCall(address,bytes)", userRegisterV2, ""));
+        assertTrue(success);
+    }
+
+    function util_upgradeUserToV2() private {
+        (bool success,) = address(erc1967Proxy).call(
+            abi.encodeWithSignature("upgradeUserImplementation(address)", address(userV2), "")
+        );
         assertTrue(success);
     }
 
@@ -286,6 +330,16 @@ contract UserRegisterV2 is UserRegister {
 
     function getTotalUsers() external pure override returns (uint256) {
         return 777;
+    }
+}
+
+contract UserV2 is User {
+    function getNick() public view override returns (string memory) {
+        return string.concat(super.getNick(), "_V1");
+    }
+
+    function getNickV2() public view returns (string memory) {
+        return string.concat(super.getNick(), "_V2");
     }
 }
 
