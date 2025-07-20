@@ -33,7 +33,7 @@ contract UserFactoryTest is Test {
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     UserRegister private userRegisterV2;
-    User private userV2;
+    User private userV2Impl;
 
     function setUp() public {
         accessManagerUpgradeable = new AccessManagerUpgradeable();
@@ -49,7 +49,7 @@ contract UserFactoryTest is Test {
         );
 
         userRegisterV2 = new UserRegisterV2(address(testErc2771Forwarder));
-        userV2 = new UserV2();
+        userV2Impl = new UserV2();
 
         vm.startPrank(address(OWNER));
 
@@ -253,24 +253,27 @@ contract UserFactoryTest is Test {
         util_upgradeUserToV2();
 
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
-        userRegister.upgradeUserImplementation(address(userV2));
+        userRegister.upgradeUserImplementation(address(userV2Impl));
     }
 
     function test_Upgrade_User_Successful() public {
         console.log(string.concat("abc", "123"));
 
         util_RegisterAccount(USER, "user");
-        assertEq("user", util_UserOf("user").getNick());
+        User user = util_UserOf("user");
+        assertEq("user", user.getNick());
 
         vm.prank(ADMIN);
         util_upgradeUserToV2();
 
         util_RegisterAccount(OWNER, "owner");
 
-        assertEq("user_V1", util_UserOf("user").getNick());
-        assertEq("owner_V1", util_UserOf("owner").getNick());
+        assertEq("user_", user.getNick());
+        assertEq("owner_", util_UserOf("owner").getNick());
 
-        assertEq("user_V2", UserV2(address(util_UserOf("user"))).getNickV2());
+        UserV2 userV2 = UserV2(address(util_UserOf("user")));
+        userV2.setSuffix("V2");
+        assertEq("user_V2", user.getNick());
     }
 
     function util_RegisterAccount(address account, string memory nick) private {
@@ -308,7 +311,7 @@ contract UserFactoryTest is Test {
 
     function util_upgradeUserToV2() private {
         (bool success,) = address(erc1967Proxy).call(
-            abi.encodeWithSignature("upgradeUserImplementation(address)", address(userV2), "")
+            abi.encodeWithSignature("upgradeUserImplementation(address)", address(userV2Impl), "")
         );
         assertTrue(success);
     }
@@ -334,12 +337,14 @@ contract UserRegisterV2 is UserRegister {
 }
 
 contract UserV2 is User {
+    string private suffix = "V2";
+
     function getNick() public view override returns (string memory) {
-        return string.concat(super.getNick(), "_V1");
+        return string.concat(super.getNick(), "_", suffix);
     }
 
-    function getNickV2() public view returns (string memory) {
-        return string.concat(super.getNick(), "_V2");
+    function setSuffix(string calldata _suffix) external {
+        suffix = _suffix;
     }
 }
 
