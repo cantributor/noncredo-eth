@@ -18,7 +18,6 @@ import {ERC2771ContextUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/metatx/ERC2771ContextUpgradeable.sol";
 import {ContextUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
 import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
-import {EnumerableSet} from "../lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 
@@ -37,9 +36,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
     mapping(address account => User user) private userByAccount;
     mapping(ShortString nick => User user) private userByNick;
 
-    using EnumerableSet for EnumerableSet.AddressSet;
-
-    EnumerableSet.AddressSet private userAccounts;
+    User[] private users;
 
     UpgradeableBeacon private userUpgradeableBeacon;
 
@@ -145,7 +142,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         User user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
-        EnumerableSet.add(userAccounts, msgSender);
+        users.push(user);
         emit SuccessfulUserRegistration(msgSender, nick);
     }
 
@@ -154,7 +151,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
      * @return total number of users
      */
     function getTotalUsers() external view virtual returns (uint256) {
-        return EnumerableSet.length(userAccounts);
+        return users.length;
     }
 
     /**
@@ -162,12 +159,10 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
      * @return result All nicks array
      */
     function getAllNicks() external view virtual returns (string[] memory result) {
-        uint256 totalUsers = EnumerableSet.length(userAccounts);
+        uint256 totalUsers = users.length;
         result = new string[](totalUsers);
         for (uint256 i = 0; i < totalUsers; ++i) {
-            address account = EnumerableSet.at(userAccounts, i);
-            User user = userByAccount[account];
-            result[i] = user.getNick();
+            result[i] = users[i].getNick();
         }
         return result;
     }
