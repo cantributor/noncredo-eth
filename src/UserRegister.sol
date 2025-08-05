@@ -66,10 +66,10 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
 
     /**
      * @dev Nick successfully registered
-     * @param account Nick account
+     * @param owner User owner address
      * @param nick Registered nick
      */
-    event SuccessfulUserRegistration(address indexed account, string indexed nick);
+    event SuccessfulUserRegistration(address indexed owner, string indexed nick);
 
     /**
      * @dev Initializable implementation
@@ -137,7 +137,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
             address(userUpgradeableBeacon),
-            abi.encodeWithSignature("initialize(address,bytes32)", msgSender, nickShortString)
+            abi.encodeWithSignature("initialize(address,bytes32,uint256)", msgSender, nickShortString, users.length)
         );
         User user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;

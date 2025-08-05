@@ -136,7 +136,9 @@ contract UserFactoryTest is Test {
 
         (bool success, bytes memory result) =
             address(erc1967Proxy).call(abi.encodeWithSignature("userOf(address)", USER));
-        assertEq("user", util_ResultAsUser(success, result).getNick());
+        User user = util_ResultAsUser(success, result);
+        assertEq("user", user.getNick());
+        assertEq(0, user.getIndex());
     }
 
     function test_userOfString() public {
@@ -144,6 +146,9 @@ contract UserFactoryTest is Test {
         util_RegisterAccount(OWNER, "owner");
 
         assertEq("user", util_UserOf("user").getNick());
+        assertEq(0, util_UserOf("user").getIndex());
+        assertEq("owner", util_UserOf("owner").getNick());
+        assertEq(1, util_UserOf("owner").getIndex());
     }
 
     function test_me() public {
@@ -203,7 +208,7 @@ contract UserFactoryTest is Test {
         User user = util_ResultAsUser(success, result);
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
-        user.initialize(USER, ShortStrings.toShortString("hacker"));
+        user.initialize(USER, ShortStrings.toShortString("hacker"), 666);
     }
 
     function test_MetaTransaction() public {
@@ -224,7 +229,9 @@ contract UserFactoryTest is Test {
         vm.prank(address(ADMIN));
         (bool success, bytes memory result) =
             address(erc1967Proxy).call(abi.encodeWithSignature("userOf(string)", "signer"));
-        assertEq("signer", util_ResultAsUser(success, result).getNick());
+        User user = util_ResultAsUser(success, result);
+        assertEq("signer", user.getNick());
+        assertEq(0, user.getIndex());
     }
 
     function test_Upgrade_UserRegister_RevertWhen_CallerIsNotAuthorized() public {
