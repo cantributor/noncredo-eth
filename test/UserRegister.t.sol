@@ -19,7 +19,7 @@ import {Initializable} from
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract UserFactoryTest is Test {
+contract UserRegisterTest is Test {
     AccessManagerUpgradeable public accessManagerUpgradeable;
     UserRegister public userRegister;
     TestERC2771Forwarder public testErc2771Forwarder;

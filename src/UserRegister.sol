@@ -6,10 +6,6 @@ import {Roles} from "../src/Roles.sol";
 import {User} from "./User.sol";
 import {UserUtils} from "./UserUtils.sol";
 
-import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {UpgradeableBeacon} from
-    "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-
 import {AccessManagerUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagerUpgradeable.sol";
 import {AccessManagedUpgradeable} from
@@ -17,11 +13,13 @@ import {AccessManagedUpgradeable} from
 import {ERC2771ContextUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/metatx/ERC2771ContextUpgradeable.sol";
 import {ContextUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
-import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {UpgradeableBeacon} from
+    "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {BeaconProxy} from "../lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
+
 import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
 import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
-
-import {BeaconProxy} from "../lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
 
 /**
  * @title UserRegister

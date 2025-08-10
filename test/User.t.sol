@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.28;
+
+import {Test, console} from "forge-std/Test.sol";
+
+import {UserRegister} from "../src/UserRegister.sol";
+import {User} from "../src/User.sol";
+
+import {UpgradeableBeacon} from
+    "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {BeaconProxy} from "../lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
+
+import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+
+contract UserTest is Test {
+    UpgradeableBeacon private userUpgradeableBeacon;
+
+    function setUp() public {
+        userUpgradeableBeacon = new UpgradeableBeacon(address(new User()), address(this));
+    }
+
+    function test_BasicUsage() public {
+        User user = util_createUser(address(this), ShortStrings.toShortString("user"), 1);
+
+        assertEq("user", user.getNick());
+        assertEq(1, user.getIndex());
+    }
+
+    function util_createUser(address owner, ShortString nickShortString, uint256 index) private returns (User user) {
+        BeaconProxy userBeaconProxy = new BeaconProxy(
+            address(userUpgradeableBeacon),
+            abi.encodeWithSignature("initialize(address,bytes32,uint256)", owner, nickShortString, index)
+        );
+        user = User(address(userBeaconProxy));
+        return user;
+    }
+}
