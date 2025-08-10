@@ -12,6 +12,13 @@ import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortS
 contract User is OwnableUpgradeable {
     ShortString private nick;
     uint256 private index;
+    address private userRegisterAddress;
+
+    /**
+     * @dev Trying to change index not from UserRegister
+     * @param msgSender Illegal message sender
+     */
+    error IllegalIndexChange(address msgSender);
 
     constructor() {
         _disableInitializers();
@@ -22,11 +29,16 @@ contract User is OwnableUpgradeable {
      * @param initialOwner Ownable implementation
      * @param _nick User nick initialization
      * @param _index User index initialization
+     * @param _userRegisterAddress UserRegister contract address
      */
-    function initialize(address initialOwner, ShortString _nick, uint256 _index) external initializer {
+    function initialize(address initialOwner, ShortString _nick, uint256 _index, address _userRegisterAddress)
+        external
+        initializer
+    {
         __Ownable_init(initialOwner);
         nick = _nick;
         index = _index;
+        userRegisterAddress = _userRegisterAddress;
     }
 
     /**
@@ -43,5 +55,16 @@ contract User is OwnableUpgradeable {
      */
     function getIndex() public view virtual returns (uint256) {
         return index;
+    }
+
+    /**
+     * @dev Set index of user
+     * @param newIndex New index value
+     */
+    function setIndex(uint256 newIndex) public virtual {
+        if (msg.sender != userRegisterAddress) {
+            revert IllegalIndexChange(msg.sender);
+        }
+        index = newIndex;
     }
 }

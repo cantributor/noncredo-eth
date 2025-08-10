@@ -208,7 +208,7 @@ contract UserRegisterTest is Test {
         User user = util_ResultAsUser(success, result);
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
-        user.initialize(USER, ShortStrings.toShortString("hacker"), 666);
+        user.initialize(USER, ShortStrings.toShortString("hacker"), 666, address(userRegister));
     }
 
     function test_MetaTransaction() public {
