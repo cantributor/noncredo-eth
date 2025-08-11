@@ -23,7 +23,8 @@ contract UserRegisterTest is Test {
     AccessManagerUpgradeable public accessManagerUpgradeable;
     UserRegister public userRegister;
     TestERC2771Forwarder public testErc2771Forwarder;
-    ERC1967Proxy erc1967Proxy;
+    ERC1967Proxy private erc1967Proxy;
+    UserRegister private userRegisterProxy;
 
     uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
 
@@ -47,6 +48,7 @@ contract UserRegisterTest is Test {
         erc1967Proxy = new ERC1967Proxy(
             address(userRegister), abi.encodeWithSignature("initialize(address)", accessManagerUpgradeable)
         );
+        userRegisterProxy = UserRegister(address(erc1967Proxy));
 
         userRegisterV2 = new UserRegisterV2(address(testErc2771Forwarder));
         userV2Impl = new UserV2();
@@ -157,6 +159,9 @@ contract UserRegisterTest is Test {
 
         (bool success, bytes memory result) = address(erc1967Proxy).call(abi.encodeWithSignature("me()"));
         assertEq("user", util_ResultAsUser(success, result).getNick());
+
+        User user = userRegisterProxy.me();
+        assertEq("user", user.getNick());
     }
 
     function test_getTotalUsers() public {
@@ -198,7 +203,10 @@ contract UserRegisterTest is Test {
 
         emit UserRegister.SuccessfulUserRegistration(address(USER), "user");
 
-        util_RegisterAccount(USER, "user");
+        User user = util_RegisterAccount(USER, "user");
+
+        assertEq("user", user.getNick());
+        assertEq(0, user.getIndex());
     }
 
     function test_RevertWhen_TryingToReinitializeUser() public {
@@ -283,10 +291,11 @@ contract UserRegisterTest is Test {
         assertEq("user_V2", user.getNick());
     }
 
-    function util_RegisterAccount(address account, string memory nick) private {
+    function util_RegisterAccount(address account, string memory nick) private returns (User user) {
         vm.prank(account);
-        (bool success,) = address(erc1967Proxy).call(abi.encodeWithSignature("registerUser(string)", nick));
-        assertTrue(success);
+        (bool success, bytes memory result) =
+            address(erc1967Proxy).call(abi.encodeWithSignature("registerUser(string)", nick));
+        return util_ResultAsUser(success, result);
     }
 
     function util_ResultAsUser(bool success, bytes memory result) private pure returns (User) {

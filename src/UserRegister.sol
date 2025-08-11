@@ -121,8 +121,9 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
     /**
      * @dev Register user for account
      * @param nick Nick for registration
+     * @return user Registered user
      */
-    function registerUser(string calldata nick) external virtual {
+    function registerUser(string calldata nick) external virtual returns (User user) {
         ShortString nickShortString = UserUtils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
@@ -139,11 +140,12 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
                 "initialize(address,bytes32,uint256,address)", msgSender, nickShortString, users.length, this
             )
         );
-        User user = User(address(userBeaconProxy));
+        user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         users.push(user);
         emit SuccessfulUserRegistration(msgSender, nick);
+        return user;
     }
 
     /**
