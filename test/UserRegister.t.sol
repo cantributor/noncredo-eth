@@ -198,10 +198,10 @@ contract UserRegisterTest is Test {
         util_RegisterAccount(USER, "user2");
     }
 
-    function test_emit_SuccessfulUserRegistration() public {
+    function test_emit_UserRegistered() public {
         vm.expectEmit(true, true, false, false);
 
-        emit UserRegister.SuccessfulUserRegistration(address(USER), "user");
+        emit UserRegister.UserRegistered(address(USER), "user");
 
         User user = util_RegisterAccount(USER, "user");
 
@@ -223,7 +223,7 @@ contract UserRegisterTest is Test {
         ERC2771ForwarderUpgradeable.ForwardRequestData memory request = ERC2771ForwarderUpgradeable.ForwardRequestData({
             from: SIGNER,
             to: address(erc1967Proxy),
-            data: abi.encodeCall(UserRegister.registerUser, ("signer")),
+            data: abi.encodeCall(UserRegister.registerMeAs, ("signer")),
             value: 0,
             gas: 1000000,
             deadline: uint48(block.timestamp + 1),
@@ -294,7 +294,7 @@ contract UserRegisterTest is Test {
     function util_RegisterAccount(address account, string memory nick) private returns (User user) {
         vm.prank(account);
         (bool success, bytes memory result) =
-            address(erc1967Proxy).call(abi.encodeWithSignature("registerUser(string)", nick));
+            address(erc1967Proxy).call(abi.encodeWithSignature("registerMeAs(string)", nick));
         return util_ResultAsUser(success, result);
     }
 

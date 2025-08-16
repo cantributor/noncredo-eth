@@ -37,7 +37,7 @@ contract UserTest is Test {
     function test_setIndex_RevertWhen_IllegalIndexChange() public {
         User user = util_createUser(address(this), ShortStrings.toShortString("user"), 1);
 
-        vm.expectRevert(abi.encodeWithSelector(User.IllegalIndexChange.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(User.UnauthorizedIndexChange.selector, this));
         user.setIndex(666);
     }
 

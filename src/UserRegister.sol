@@ -63,11 +63,18 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
     error AccountAlreadyRegistered(address account);
 
     /**
-     * @dev Nick successfully registered
+     * @dev User successfully registered
      * @param owner User owner address
-     * @param nick Registered nick
+     * @param nick User nick
      */
-    event SuccessfulUserRegistration(address indexed owner, string indexed nick);
+    event UserRegistered(address indexed owner, string indexed nick);
+
+    /**
+     * @dev User successfully removed
+     * @param owner User owner address
+     * @param nick User nick
+     */
+    event UserRemoved(address indexed owner, string indexed nick);
 
     /**
      * @dev Initializable implementation
@@ -119,11 +126,11 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
     }
 
     /**
-     * @dev Register user for account
+     * @dev Register user for sender account with specific nickname
      * @param nick Nick for registration
      * @return user Registered user
      */
-    function registerUser(string calldata nick) external virtual returns (User user) {
+    function registerMeAs(string calldata nick) external virtual returns (User user) {
         ShortString nickShortString = UserUtils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
@@ -144,7 +151,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         users.push(user);
-        emit SuccessfulUserRegistration(msgSender, nick);
+        emit UserRegistered(msgSender, nick);
         return user;
     }
 

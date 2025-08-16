@@ -18,7 +18,7 @@ contract User is OwnableUpgradeable {
      * @dev Trying to change index not from UserRegister
      * @param msgSender Illegal message sender
      */
-    error IllegalIndexChange(address msgSender);
+    error UnauthorizedIndexChange(address msgSender);
 
     constructor() {
         _disableInitializers();
@@ -50,6 +50,14 @@ contract User is OwnableUpgradeable {
     }
 
     /**
+     * @dev Get nick ShortString
+     * @return Nick ShortString
+     */
+    function getNickShortString() public view virtual returns (ShortString) {
+        return nick;
+    }
+
+    /**
      * @dev Get index of user
      * @return result User index
      */
@@ -63,7 +71,7 @@ contract User is OwnableUpgradeable {
      */
     function setIndex(uint256 newIndex) public virtual {
         if (msg.sender != userRegisterAddress) {
-            revert IllegalIndexChange(msg.sender);
+            revert UnauthorizedIndexChange(msg.sender);
         }
         index = newIndex;
     }
