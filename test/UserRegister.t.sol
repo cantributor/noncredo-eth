@@ -29,7 +29,8 @@ contract UserRegisterTest is Test {
     uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
 
     address private constant OWNER = address(1);
-    address private constant ADMIN = address(3);
+    address private constant UPGRADE_ADMIN = address(333);
+    address private constant USER_ADMIN = address(777);
     address private immutable USER = address(this);
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
@@ -57,25 +58,30 @@ contract UserRegisterTest is Test {
 
         bytes4[] memory userOfStringSelector = new bytes4[](1);
         userOfStringSelector[0] = bytes4(keccak256("userOf(string)"));
-        accessManagerUpgradeable.setTargetFunctionRole(address(erc1967Proxy), userOfStringSelector, Roles.ADMIN_ROLE);
+        accessManagerUpgradeable.setTargetFunctionRole(
+            address(erc1967Proxy), userOfStringSelector, Roles.USER_ADMIN_ROLE
+        );
 
         bytes4[] memory userOfAddressSelector = new bytes4[](1);
         userOfAddressSelector[0] = bytes4(keccak256("userOf(address)"));
-        accessManagerUpgradeable.setTargetFunctionRole(address(erc1967Proxy), userOfAddressSelector, Roles.ADMIN_ROLE);
+        accessManagerUpgradeable.setTargetFunctionRole(
+            address(erc1967Proxy), userOfAddressSelector, Roles.USER_ADMIN_ROLE
+        );
 
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
         accessManagerUpgradeable.setTargetFunctionRole(
-            address(erc1967Proxy), upgradeToAndCallSelector, Roles.ADMIN_ROLE
+            address(erc1967Proxy), upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE
         );
 
         bytes4[] memory upgradeUserImplementationSelector = new bytes4[](1);
         upgradeUserImplementationSelector[0] = bytes4(keccak256("upgradeUserImplementation(address)"));
         accessManagerUpgradeable.setTargetFunctionRole(
-            address(erc1967Proxy), upgradeUserImplementationSelector, Roles.ADMIN_ROLE
+            address(erc1967Proxy), upgradeUserImplementationSelector, Roles.UPGRADE_ADMIN_ROLE
         );
 
-        accessManagerUpgradeable.grantRole(Roles.ADMIN_ROLE, ADMIN, 0);
+        accessManagerUpgradeable.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
+        accessManagerUpgradeable.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
 
         vm.stopPrank();
     }
@@ -117,7 +123,7 @@ contract UserRegisterTest is Test {
         (bool s1,) = address(erc1967Proxy).call(abi.encodeWithSignature("me()"));
         assertTrue(s1);
 
-        vm.startPrank(address(ADMIN));
+        vm.startPrank(address(USER_ADMIN));
 
         vm.expectRevert(abi.encodeWithSelector(UserRegister.AccountNotRegistered.selector, USER));
         (bool s2,) = address(erc1967Proxy).call(abi.encodeWithSignature("userOf(address)", USER));
@@ -134,7 +140,7 @@ contract UserRegisterTest is Test {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
 
-        vm.prank(address(ADMIN));
+        vm.prank(address(USER_ADMIN));
 
         (bool success, bytes memory result) =
             address(erc1967Proxy).call(abi.encodeWithSignature("userOf(address)", USER));
@@ -234,7 +240,7 @@ contract UserRegisterTest is Test {
 
         testErc2771Forwarder.execute(request);
 
-        vm.prank(address(ADMIN));
+        vm.prank(address(USER_ADMIN));
         (bool success, bytes memory result) =
             address(erc1967Proxy).call(abi.encodeWithSignature("userOf(string)", "signer"));
         User user = util_ResultAsUser(success, result);
@@ -258,7 +264,7 @@ contract UserRegisterTest is Test {
         util_RegisterAccount(USER, "user");
         assertEq(util_getTotalUsers(), 1);
 
-        vm.prank(ADMIN);
+        vm.prank(UPGRADE_ADMIN);
         util_upgradeUserRegisterToV2();
         assertEq(util_getTotalUsers(), 777);
     }
@@ -278,7 +284,7 @@ contract UserRegisterTest is Test {
         User user = util_UserOf("user");
         assertEq("user", user.getNick());
 
-        vm.prank(ADMIN);
+        vm.prank(UPGRADE_ADMIN);
         util_upgradeUserToV2();
 
         util_RegisterAccount(OWNER, "owner");
@@ -305,7 +311,7 @@ contract UserRegisterTest is Test {
     }
 
     function util_UserOf(string memory nick) private returns (User) {
-        vm.prank(address(ADMIN));
+        vm.prank(address(USER_ADMIN));
 
         (bool success, bytes memory result) =
             address(erc1967Proxy).call(abi.encodeWithSignature("userOf(string)", nick));
