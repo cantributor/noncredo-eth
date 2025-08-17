@@ -29,8 +29,8 @@ contract UserRegisterTest is Test {
     uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
 
     address private constant OWNER = address(1);
-    address private constant UPGRADE_ADMIN = address(333);
-    address private constant USER_ADMIN = address(777);
+    address private constant UPGRADE_ADMIN = address(0xA);
+    address private constant USER_ADMIN = address(0xB);
     address private immutable USER = address(this);
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
@@ -38,6 +38,12 @@ contract UserRegisterTest is Test {
     User private userV2Impl;
 
     function setUp() public {
+        vm.label(OWNER, "OWNER");
+        vm.label(USER, "USER");
+        vm.label(SIGNER, "SIGNER");
+        vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
+        vm.label(USER_ADMIN, "USER_ADMIN");
+
         accessManagerUpgradeable = new AccessManagerUpgradeable();
         accessManagerUpgradeable.initialize(OWNER);
 
@@ -67,6 +73,10 @@ contract UserRegisterTest is Test {
         accessManagerUpgradeable.setTargetFunctionRole(
             address(erc1967Proxy), userOfAddressSelector, Roles.USER_ADMIN_ROLE
         );
+
+        bytes4[] memory removeSelector = new bytes4[](1);
+        removeSelector[0] = bytes4(keccak256("remove(address)"));
+        accessManagerUpgradeable.setTargetFunctionRole(address(erc1967Proxy), removeSelector, Roles.USER_ADMIN_ROLE);
 
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
@@ -103,6 +113,10 @@ contract UserRegisterTest is Test {
         vm.expectRevert(encodedUnauthorized);
         (bool s2,) = address(erc1967Proxy).call(abi.encodeWithSignature("userOf(string)", "user"));
         assertTrue(s2);
+
+        User userToRemove = userRegisterProxy.registerMeAs("user");
+        vm.expectRevert(encodedUnauthorized);
+        userRegisterProxy.remove(userToRemove);
     }
 
     function test_RevertWhen_NickTooShortOrTooLong() public {
@@ -223,6 +237,53 @@ contract UserRegisterTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
         user.initialize(USER, ShortStrings.toShortString("hacker"), 666, address(userRegister));
+    }
+
+    function test_remove() public {
+        vm.prank(address(101));
+        User user1 = userRegisterProxy.registerMeAs("user1");
+        vm.prank(address(102));
+        User user2 = userRegisterProxy.registerMeAs("user2");
+        vm.prank(address(103));
+        User user3 = userRegisterProxy.registerMeAs("user3");
+
+        assertEq(3, userRegisterProxy.getTotalUsers());
+
+        assertEq(address(user1), address(util_UserOf("user1")));
+        assertEq(0, util_UserOf("user1").getIndex());
+
+        assertEq(address(user2), address(util_UserOf("user2")));
+        assertEq(1, util_UserOf("user2").getIndex());
+        assertEq(1, user2.getIndex());
+
+        assertEq(address(user3), address(util_UserOf("user3")));
+        assertEq(2, util_UserOf("user3").getIndex());
+
+        vm.expectEmit(true, true, false, false);
+        emit UserRegister.UserRemoved(address(102), "user2");
+
+        vm.prank(USER_ADMIN);
+        userRegisterProxy.remove(user2);
+
+        assertEq(2, userRegisterProxy.getTotalUsers());
+
+        vm.prank(USER_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(UserRegister.AccountNotRegistered.selector, address(102)));
+        userRegisterProxy.userOf(address(102));
+
+        vm.prank(USER_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(UserRegister.NickNotRegistered.selector, "user2"));
+        userRegisterProxy.userOf("user2");
+
+        string[] memory expectedNicks = new string[](2);
+        expectedNicks[0] = "user1";
+        expectedNicks[1] = "user3";
+
+        string[] memory allNicksResult = userRegisterProxy.getAllNicks();
+        assertEq(expectedNicks, allNicksResult);
+
+        assertEq(0, util_UserOf("user1").getIndex());
+        assertEq(1, util_UserOf("user3").getIndex());
     }
 
     function test_MetaTransaction() public {

@@ -156,6 +156,28 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
     }
 
     /**
+     * @dev Remove user
+     * @param user User to remove
+     */
+    function remove(User user) external virtual restricted {
+        address foundByNick = address(userByNick[user.getNickShortString()]);
+        if (foundByNick == address(0)) {
+            revert NickNotRegistered(user.getNick());
+        }
+        address foundByAccount = address(userByAccount[user.owner()]);
+        if (foundByAccount == address(0)) {
+            revert AccountNotRegistered(user.owner());
+        }
+        delete userByNick[user.getNickShortString()];
+        delete userByAccount[user.owner()];
+        uint256 userIndex = user.getIndex();
+        users[userIndex] = users[users.length - 1];
+        users[userIndex].setIndex(userIndex);
+        users.pop();
+        emit UserRemoved(user.owner(), user.getNick());
+    }
+
+    /**
      * @dev Get total number of users
      * @return total number of users
      */
