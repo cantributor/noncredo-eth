@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
-import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 library UserUtils {
     uint8 private constant MIN_NICK_LENGTH = 3;

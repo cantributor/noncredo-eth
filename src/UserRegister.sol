@@ -6,20 +6,16 @@ import {Roles} from "../src/Roles.sol";
 import {User} from "./User.sol";
 import {UserUtils} from "./UserUtils.sol";
 
-import {AccessManagerUpgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagerUpgradeable.sol";
-import {AccessManagedUpgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagedUpgradeable.sol";
-import {ERC2771ContextUpgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/metatx/ERC2771ContextUpgradeable.sol";
-import {ContextUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
-import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {UpgradeableBeacon} from
-    "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {BeaconProxy} from "../lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
+import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
+import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
+import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
-import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
-import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 /**
  * @title UserRegister

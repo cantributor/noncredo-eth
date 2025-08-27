@@ -6,12 +6,11 @@ import {Test, console} from "forge-std/Test.sol";
 import {UserRegister} from "../src/UserRegister.sol";
 import {User} from "../src/User.sol";
 
-import {UpgradeableBeacon} from
-    "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {BeaconProxy} from "../lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
-import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
-import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 contract UserTest is Test {
     address private constant USER_REGISTER_ADDRESS = address(1);

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {ShortString} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
-import {ShortStrings} from "../lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 /**
  * @title User
