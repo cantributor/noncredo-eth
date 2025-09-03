@@ -7,6 +7,7 @@ import {UserRegister} from "../src/UserRegister.sol";
 import {Roles} from "../src/Roles.sol";
 import {User} from "../src/User.sol";
 import {UserUtils} from "../src/UserUtils.sol";
+import {ERC2771Forwarder} from "../src/ERC2771Forwarder.sol";
 
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
@@ -17,9 +18,9 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 contract UserRegisterTest is Test {
-    AccessManagerUpgradeable public accessManagerUpgradeable;
-    UserRegister public userRegister;
-    TestERC2771Forwarder public testErc2771Forwarder;
+    AccessManagerUpgradeable private accessManagerUpgradeable;
+    UserRegister private userRegister;
+    ERC2771Forwarder private erc2771Forwarder;
     ERC1967Proxy private erc1967Proxy;
     UserRegister private userRegisterProxy;
 
@@ -44,17 +45,17 @@ contract UserRegisterTest is Test {
         accessManagerUpgradeable = new AccessManagerUpgradeable();
         accessManagerUpgradeable.initialize(OWNER);
 
-        testErc2771Forwarder = new TestERC2771Forwarder();
-        testErc2771Forwarder.initialize("testForwarder");
+        erc2771Forwarder = new ERC2771Forwarder();
+        erc2771Forwarder.initialize("erc2771Forwarder");
 
-        userRegister = new UserRegister(address(testErc2771Forwarder));
+        userRegister = new UserRegister(address(erc2771Forwarder));
 
         erc1967Proxy = new ERC1967Proxy(
-            address(userRegister), abi.encodeWithSignature("initialize(address)", accessManagerUpgradeable)
+            address(userRegister), abi.encodeCall(UserRegister.initialize, address(accessManagerUpgradeable))
         );
         userRegisterProxy = UserRegister(address(erc1967Proxy));
 
-        userRegisterV2 = new UserRegisterV2(address(testErc2771Forwarder));
+        userRegisterV2 = new UserRegisterV2(address(erc2771Forwarder));
         userV2Impl = new UserV2();
 
         vm.startPrank(address(OWNER));
@@ -294,9 +295,9 @@ contract UserRegisterTest is Test {
             signature: "" // should be overriden with util_signRequestData
         });
 
-        util_signRequestData(request, testErc2771Forwarder.nonces(SIGNER));
+        util_signRequestData(request, erc2771Forwarder.nonces(SIGNER));
 
-        testErc2771Forwarder.execute(request);
+        erc2771Forwarder.execute(request);
 
         vm.prank(address(USER_ADMIN));
         (bool success, bytes memory result) =
@@ -401,7 +402,7 @@ contract UserRegisterTest is Test {
         view
         returns (ERC2771ForwarderUpgradeable.ForwardRequestData memory)
     {
-        bytes32 digest = testErc2771Forwarder.forwardRequestStructHash(request, nonce);
+        bytes32 digest = erc2771Forwarder.forwardRequestStructHash(request, nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, digest);
         request.signature = abi.encodePacked(r, s, v);
         return request;
@@ -425,30 +426,5 @@ contract UserV2 is User {
 
     function setSuffix(string calldata _suffix) external {
         suffix = _suffix;
-    }
-}
-
-contract TestERC2771Forwarder is ERC2771ForwarderUpgradeable {
-    constructor() ERC2771ForwarderUpgradeable() {}
-
-    function forwardRequestStructHash(ERC2771ForwarderUpgradeable.ForwardRequestData calldata request, uint256 nonce)
-        external
-        view
-        returns (bytes32)
-    {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    _FORWARD_REQUEST_TYPEHASH,
-                    request.from,
-                    request.to,
-                    request.value,
-                    request.gas,
-                    nonce,
-                    request.deadline,
-                    keccak256(request.data)
-                )
-            )
-        );
     }
 }
