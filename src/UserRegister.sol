@@ -2,7 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {Roles} from "../src/Roles.sol";
+import {Roles} from "./Roles.sol";
 import {User} from "./User.sol";
 import {UserUtils} from "./UserUtils.sol";
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
@@ -33,7 +33,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
 
     User[] private users;
 
-    AccessManagedBeaconHolder public userBeacon;
+    AccessManagedBeaconHolder public userBeaconHolder;
 
     /**
      * @dev Trying to get unregistered account
@@ -77,10 +77,10 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
      * @dev Initializable implementation
      * @param initialAuthority Access manager
      */
-    function initialize(address initialAuthority, AccessManagedBeaconHolder _userBeacon) public initializer {
+    function initialize(address initialAuthority, AccessManagedBeaconHolder _userBeaconHolder) public initializer {
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
-        userBeacon = _userBeacon;
+        userBeaconHolder = _userBeaconHolder;
     }
 
     /**
@@ -139,7 +139,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
             revert AccountAlreadyRegistered(msgSender);
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
-            address(userBeacon.beacon()),
+            address(userBeaconHolder.beacon()),
             abi.encodeCall(User.initialize, (msgSender, nickShortString, users.length, address(this)))
         );
         user = User(address(userBeaconProxy));

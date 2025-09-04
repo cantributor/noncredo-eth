@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 
-import {AccessManagedBeaconHolder} from "../src/AccessManagedBeaconHolder.sol";
-import {UserRegister} from "../src/UserRegister.sol";
-import {Roles} from "../src/Roles.sol";
-import {User} from "../src/User.sol";
-import {ERC2771Forwarder} from "../src/ERC2771Forwarder.sol";
+import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
+import {UserRegister} from "src/UserRegister.sol";
+import {Roles} from "src/Roles.sol";
+import {User} from "src/User.sol";
+import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -59,7 +59,7 @@ contract DeployScript is Script {
         address userForPrank,
         AccessManagerUpgradeable accessManager,
         address userRegisterProxyAddress,
-        address userBeaconAddress
+        address userBeaconHolderAddress
     ) public {
         if (userForPrank != address(0)) {
             vm.startPrank(userForPrank);
@@ -85,7 +85,9 @@ contract DeployScript is Script {
 
         bytes4[] memory userBeaconUpgradeToSelector = new bytes4[](1);
         userBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
-        accessManager.setTargetFunctionRole(userBeaconAddress, userBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE);
+        accessManager.setTargetFunctionRole(
+            userBeaconHolderAddress, userBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE
+        );
 
         if (userForPrank != address(0)) {
             vm.stopPrank();

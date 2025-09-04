@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
-import {UserRegister} from "../src/UserRegister.sol";
-import {User} from "../src/User.sol";
+import {UserRegister} from "src/UserRegister.sol";
+import {User} from "src/User.sol";
 
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
