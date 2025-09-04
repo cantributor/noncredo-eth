@@ -5,6 +5,7 @@ pragma solidity 0.8.28;
 import {Roles} from "../src/Roles.sol";
 import {User} from "./User.sol";
 import {UserUtils} from "./UserUtils.sol";
+import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
@@ -32,7 +33,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
 
     User[] private users;
 
-    UpgradeableBeacon private userUpgradeableBeacon;
+    AccessManagedBeaconHolder public userBeacon;
 
     /**
      * @dev Trying to get unregistered account
@@ -76,10 +77,10 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
      * @dev Initializable implementation
      * @param initialAuthority Access manager
      */
-    function initialize(address initialAuthority) public initializer {
+    function initialize(address initialAuthority, AccessManagedBeaconHolder _userBeacon) public initializer {
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
-        userUpgradeableBeacon = new UpgradeableBeacon(address(new User()), address(this));
+        userBeacon = _userBeacon;
     }
 
     /**
@@ -138,10 +139,8 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
             revert AccountAlreadyRegistered(msgSender);
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
-            address(userUpgradeableBeacon),
-            abi.encodeWithSignature(
-                "initialize(address,bytes32,uint256,address)", msgSender, nickShortString, users.length, this
-            )
+            address(userBeacon.beacon()),
+            abi.encodeCall(User.initialize, (msgSender, nickShortString, users.length, address(this)))
         );
         user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;
@@ -192,14 +191,6 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
             result[i] = users[i].getNick();
         }
         return result;
-    }
-
-    /**
-     * @dev Upgrade user implementation
-     * @param newImplementation New User contract implementation
-     */
-    function upgradeUserImplementation(address newImplementation) external virtual restricted {
-        userUpgradeableBeacon.upgradeTo(newImplementation);
     }
 
     /**

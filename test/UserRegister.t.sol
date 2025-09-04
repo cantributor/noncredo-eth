@@ -8,6 +8,7 @@ import {Roles} from "../src/Roles.sol";
 import {User} from "../src/User.sol";
 import {UserUtils} from "../src/UserUtils.sol";
 import {ERC2771Forwarder} from "../src/ERC2771Forwarder.sol";
+import {AccessManagedBeaconHolder} from "../src/AccessManagedBeaconHolder.sol";
 
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
@@ -16,6 +17,8 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {DeployScript} from "../script/Deploy.s.sol";
 
 contract UserRegisterTest is Test {
     AccessManagerUpgradeable private accessManagerUpgradeable;
@@ -48,45 +51,26 @@ contract UserRegisterTest is Test {
         erc2771Forwarder = new ERC2771Forwarder();
         erc2771Forwarder.initialize("erc2771Forwarder");
 
+        AccessManagedBeaconHolder userBeacon = new AccessManagedBeaconHolder();
+        userBeacon.initialize(
+            address(accessManagerUpgradeable), new UpgradeableBeacon(address(new User()), address(userBeacon))
+        );
+
         userRegister = new UserRegister(address(erc2771Forwarder));
 
         erc1967Proxy = new ERC1967Proxy(
-            address(userRegister), abi.encodeCall(UserRegister.initialize, address(accessManagerUpgradeable))
+            address(userRegister),
+            abi.encodeCall(UserRegister.initialize, (address(accessManagerUpgradeable), userBeacon))
         );
         userRegisterProxy = UserRegister(address(erc1967Proxy));
 
         userRegisterV2 = new UserRegisterV2(address(erc2771Forwarder));
         userV2Impl = new UserV2();
 
-        vm.startPrank(address(OWNER));
+        DeployScript deployScript = new DeployScript();
+        deployScript.grantAccessToRoles(OWNER, accessManagerUpgradeable, address(erc1967Proxy), address(userBeacon));
 
-        bytes4[] memory userOfStringSelector = new bytes4[](1);
-        userOfStringSelector[0] = bytes4(keccak256("userOf(string)"));
-        accessManagerUpgradeable.setTargetFunctionRole(
-            address(erc1967Proxy), userOfStringSelector, Roles.USER_ADMIN_ROLE
-        );
-
-        bytes4[] memory userOfAddressSelector = new bytes4[](1);
-        userOfAddressSelector[0] = bytes4(keccak256("userOf(address)"));
-        accessManagerUpgradeable.setTargetFunctionRole(
-            address(erc1967Proxy), userOfAddressSelector, Roles.USER_ADMIN_ROLE
-        );
-
-        bytes4[] memory removeSelector = new bytes4[](1);
-        removeSelector[0] = bytes4(keccak256("remove(address)"));
-        accessManagerUpgradeable.setTargetFunctionRole(address(erc1967Proxy), removeSelector, Roles.USER_ADMIN_ROLE);
-
-        bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
-        upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
-        accessManagerUpgradeable.setTargetFunctionRole(
-            address(erc1967Proxy), upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE
-        );
-
-        bytes4[] memory upgradeUserImplementationSelector = new bytes4[](1);
-        upgradeUserImplementationSelector[0] = bytes4(keccak256("upgradeUserImplementation(address)"));
-        accessManagerUpgradeable.setTargetFunctionRole(
-            address(erc1967Proxy), upgradeUserImplementationSelector, Roles.UPGRADE_ADMIN_ROLE
-        );
+        vm.startPrank(OWNER);
 
         accessManagerUpgradeable.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
         accessManagerUpgradeable.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
@@ -329,11 +313,10 @@ contract UserRegisterTest is Test {
     }
 
     function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
-        util_upgradeUserToV2();
+        AccessManagedBeaconHolder userBeacon = userRegisterProxy.userBeacon();
 
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
-        userRegister.upgradeUserImplementation(address(userV2Impl));
+        userBeacon.upgradeTo(address(userV2Impl));
     }
 
     function test_Upgrade_User_Successful() public {
@@ -343,8 +326,9 @@ contract UserRegisterTest is Test {
         User user = util_UserOf("user");
         assertEq("user", user.getNick());
 
-        vm.prank(UPGRADE_ADMIN);
-        util_upgradeUserToV2();
+        vm.startPrank(UPGRADE_ADMIN);
+        userRegisterProxy.userBeacon().upgradeTo(address(userV2Impl));
+        vm.stopPrank();
 
         util_RegisterAccount(OWNER, "owner");
 
@@ -387,13 +371,6 @@ contract UserRegisterTest is Test {
     function util_upgradeUserRegisterToV2() private {
         (bool success,) =
             address(erc1967Proxy).call(abi.encodeWithSignature("upgradeToAndCall(address,bytes)", userRegisterV2, ""));
-        assertTrue(success);
-    }
-
-    function util_upgradeUserToV2() private {
-        (bool success,) = address(erc1967Proxy).call(
-            abi.encodeWithSignature("upgradeUserImplementation(address)", address(userV2Impl), "")
-        );
         assertTrue(success);
     }
 
