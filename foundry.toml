@@ -10,9 +10,10 @@ forge-std = "1.10.0"
 openzeppelin-foundry-upgrades = "0.4.0"
 
 [rpc_endpoints]
+anvil = "${ANVIL_RPC_URL}"
 sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
-#sepolia = { key = "${ETHERSCAN_API_KEY}" }
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

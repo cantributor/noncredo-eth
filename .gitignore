@@ -3,6 +3,8 @@ lib
 out
 cache
 
+*.env
+
 # Soldeer
 /dependencies
 /broadcast
