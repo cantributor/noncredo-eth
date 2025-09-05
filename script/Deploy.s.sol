@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Script, console} from "forge-std/Script.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
-import {UserRegister} from "src/UserRegister.sol";
+import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
@@ -18,9 +18,9 @@ contract DeployScript is Script {
     AccessManagerUpgradeable private accessManagerUpgradeable;
     ERC2771Forwarder private erc2771Forwarder;
 
-    UserRegister private userRegisterImpl;
-    address private userRegisterProxyAddress;
-    UserRegister private userRegisterProxy;
+    Register private registerImpl;
+    address private registerProxyAddress;
+    Register private registerProxy;
 
     UpgradeableBeacon private userUpgradeableBeacon;
     address private userUpgradeableBeaconAddress;
@@ -46,16 +46,16 @@ contract DeployScript is Script {
         userUpgradeableBeacon = UpgradeableBeacon(userUpgradeableBeaconAddress);
         userBeaconHolder.initialize(address(accessManagerUpgradeable), userUpgradeableBeacon);
 
-        userRegisterImpl = new UserRegister(address(erc2771Forwarder));
+        registerImpl = new Register(address(erc2771Forwarder));
 
-        userRegisterProxyAddress = UnsafeUpgrades.deployUUPSProxy(
-            address(userRegisterImpl),
-            abi.encodeCall(UserRegister.initialize, (address(accessManagerUpgradeable), userBeaconHolder))
+        registerProxyAddress = UnsafeUpgrades.deployUUPSProxy(
+            address(registerImpl),
+            abi.encodeCall(Register.initialize, (address(accessManagerUpgradeable), userBeaconHolder))
         );
-        userRegisterProxy = UserRegister(address(userRegisterProxyAddress));
-        console.log("UserRegister proxy address:", userRegisterProxyAddress);
+        registerProxy = Register(address(registerProxyAddress));
+        console.log("Register proxy address:", registerProxyAddress);
 
-        grantAccessToRoles(address(0), accessManagerUpgradeable, userRegisterProxyAddress, address(userBeaconHolder));
+        grantAccessToRoles(address(0), accessManagerUpgradeable, registerProxyAddress, address(userBeaconHolder));
 
         accessManagerUpgradeable.grantRole(Roles.UPGRADE_ADMIN_ROLE, msg.sender, 0);
         accessManagerUpgradeable.grantRole(Roles.USER_ADMIN_ROLE, msg.sender, 0);
@@ -67,7 +67,7 @@ contract DeployScript is Script {
     function grantAccessToRoles(
         address userForPrank,
         AccessManagerUpgradeable accessManager,
-        address userRegisterProxyAddr,
+        address registerProxyAddr,
         address userBeaconHolderAddr
     ) public {
         if (userForPrank != address(0)) {
@@ -76,19 +76,19 @@ contract DeployScript is Script {
 
         bytes4[] memory userOfStringSelector = new bytes4[](1);
         userOfStringSelector[0] = bytes4(keccak256("userOf(string)"));
-        accessManager.setTargetFunctionRole(userRegisterProxyAddr, userOfStringSelector, Roles.USER_ADMIN_ROLE);
+        accessManager.setTargetFunctionRole(registerProxyAddr, userOfStringSelector, Roles.USER_ADMIN_ROLE);
 
         bytes4[] memory userOfAddressSelector = new bytes4[](1);
         userOfAddressSelector[0] = bytes4(keccak256("userOf(address)"));
-        accessManager.setTargetFunctionRole(userRegisterProxyAddr, userOfAddressSelector, Roles.USER_ADMIN_ROLE);
+        accessManager.setTargetFunctionRole(registerProxyAddr, userOfAddressSelector, Roles.USER_ADMIN_ROLE);
 
         bytes4[] memory removeSelector = new bytes4[](1);
         removeSelector[0] = bytes4(keccak256("remove(address)"));
-        accessManager.setTargetFunctionRole(userRegisterProxyAddr, removeSelector, Roles.USER_ADMIN_ROLE);
+        accessManager.setTargetFunctionRole(registerProxyAddr, removeSelector, Roles.USER_ADMIN_ROLE);
 
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
-        accessManager.setTargetFunctionRole(userRegisterProxyAddr, upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE);
+        accessManager.setTargetFunctionRole(registerProxyAddr, upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE);
 
         bytes4[] memory userBeaconUpgradeToSelector = new bytes4[](1);
         userBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));

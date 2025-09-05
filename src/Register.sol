@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 
 import {Roles} from "./Roles.sol";
 import {User} from "./User.sol";
-import {UserUtils} from "./UserUtils.sol";
+import {Utils} from "./Utils.sol";
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
@@ -19,10 +19,10 @@ import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 /**
- * @title UserRegister
- * @dev User register contract
+ * @title Register
+ * @dev Main register contract
  */
-contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUpgradeable {
+contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {
         _disableInitializers();
@@ -128,7 +128,7 @@ contract UserRegister is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UU
      * @return user Registered user
      */
     function registerMeAs(string calldata nick) external virtual returns (User user) {
-        ShortString nickShortString = UserUtils.validateNick(nick);
+        ShortString nickShortString = Utils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
             revert NickAlreadyRegistered(nick);

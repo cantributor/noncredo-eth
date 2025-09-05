@@ -13,10 +13,10 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract User is OwnableUpgradeable {
     ShortString private nick;
     uint256 private index;
-    address private userRegisterAddress;
+    address private registerAddress;
 
     /**
-     * @dev Trying to change index not from UserRegister
+     * @dev Trying to change index not from Register.sol
      * @param msgSender Illegal message sender
      */
     error UnauthorizedIndexChange(address msgSender);
@@ -30,16 +30,16 @@ contract User is OwnableUpgradeable {
      * @param initialOwner Ownable implementation
      * @param _nick User nick initialization
      * @param _index User index initialization
-     * @param _userRegisterAddress UserRegister contract address
+     * @param _registerAddress Register.sol contract address
      */
-    function initialize(address initialOwner, ShortString _nick, uint256 _index, address _userRegisterAddress)
+    function initialize(address initialOwner, ShortString _nick, uint256 _index, address _registerAddress)
         external
         initializer
     {
         __Ownable_init(initialOwner);
         nick = _nick;
         index = _index;
-        userRegisterAddress = _userRegisterAddress;
+        registerAddress = _registerAddress;
     }
 
     /**
@@ -71,7 +71,7 @@ contract User is OwnableUpgradeable {
      * @param newIndex New index value
      */
     function setIndex(uint256 newIndex) public virtual {
-        if (msg.sender != userRegisterAddress) {
+        if (msg.sender != registerAddress) {
             revert UnauthorizedIndexChange(msg.sender);
         }
         index = newIndex;
