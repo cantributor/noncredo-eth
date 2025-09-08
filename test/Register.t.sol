@@ -11,7 +11,7 @@ import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
-import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {ERC2771ForwarderUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ForwarderUpgradeable.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -22,15 +22,10 @@ import {DeployScript} from "../script/Deploy.s.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract RegisterTest is Test {
-    AccessManagerUpgradeable private accessManagerUpgradeable;
+    IAccessManager private accessManager;
     ERC2771Forwarder private erc2771Forwarder;
-
     Register private registerImpl;
-    address private registerProxyAddress;
     Register private registerProxy;
-
-    UpgradeableBeacon private userUpgradeableBeacon;
-    address private userUpgradeableBeaconAddress;
     AccessManagedBeaconHolder private userBeaconHolder;
 
     uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
@@ -51,37 +46,18 @@ contract RegisterTest is Test {
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
         vm.label(USER_ADMIN, "USER_ADMIN");
 
-        accessManagerUpgradeable = new AccessManagerUpgradeable();
-        accessManagerUpgradeable.initialize(OWNER);
+        DeployScript deployScript = new DeployScript();
+        (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder) =
+            deployScript.createContracts(OWNER);
+        deployScript.grantAccessToRoles(OWNER, accessManager, address(registerProxy), address(userBeaconHolder));
 
-        erc2771Forwarder = new ERC2771Forwarder();
-        erc2771Forwarder.initialize("erc2771Forwarder");
-
-        userBeaconHolder = new AccessManagedBeaconHolder();
-        userUpgradeableBeaconAddress = UnsafeUpgrades.deployBeacon(address(new User()), address(userBeaconHolder));
-        userUpgradeableBeacon = UpgradeableBeacon(userUpgradeableBeaconAddress);
-        userBeaconHolder.initialize(address(accessManagerUpgradeable), userUpgradeableBeacon);
-
-        registerImpl = new Register(address(erc2771Forwarder));
-
-        registerProxyAddress = UnsafeUpgrades.deployUUPSProxy(
-            address(registerImpl),
-            abi.encodeCall(Register.initialize, (address(accessManagerUpgradeable), userBeaconHolder))
-        );
-        registerProxy = Register(address(registerProxyAddress));
+        vm.startPrank(OWNER);
+        accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
+        accessManager.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
+        vm.stopPrank();
 
         registerV2 = new RegisterV2(address(erc2771Forwarder));
         userV2Impl = new UserV2();
-
-        DeployScript deployScript = new DeployScript();
-        deployScript.grantAccessToRoles(
-            OWNER, accessManagerUpgradeable, registerProxyAddress, address(userBeaconHolder)
-        );
-
-        vm.startPrank(OWNER);
-        accessManagerUpgradeable.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
-        accessManagerUpgradeable.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
-        vm.stopPrank();
     }
 
     function test_RevertWhen_CallerIsNotAuthorized() public {
@@ -95,11 +71,11 @@ contract RegisterTest is Test {
         registerImpl.userOf("user");
 
         vm.expectRevert(encodedUnauthorized);
-        (bool s1,) = registerProxyAddress.call(abi.encodeWithSignature("userOf(address)", USER));
+        (bool s1,) = address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
         assertTrue(s1);
 
         vm.expectRevert(encodedUnauthorized);
-        (bool s2,) = registerProxyAddress.call(abi.encodeWithSignature("userOf(string)", "user"));
+        (bool s2,) = address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "user"));
         assertTrue(s2);
 
         User userToRemove = registerProxy.registerMeAs("user");
@@ -120,17 +96,17 @@ contract RegisterTest is Test {
 
     function test_RevertWhen_NotFound() public {
         vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, USER));
-        (bool s1,) = registerProxyAddress.call(abi.encodeWithSignature("me()"));
+        (bool s1,) = address(registerProxy).call(abi.encodeWithSignature("me()"));
         assertTrue(s1);
 
         vm.startPrank(address(USER_ADMIN));
 
         vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, USER));
-        (bool s2,) = registerProxyAddress.call(abi.encodeWithSignature("userOf(address)", USER));
+        (bool s2,) = address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
         assertTrue(s2);
 
         vm.expectRevert(abi.encodeWithSelector(Register.NickNotRegistered.selector, "user"));
-        (bool s3,) = registerProxyAddress.call(abi.encodeWithSignature("userOf(string)", "user"));
+        (bool s3,) = address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "user"));
         assertTrue(s3);
 
         vm.stopPrank();
@@ -143,7 +119,7 @@ contract RegisterTest is Test {
         vm.prank(address(USER_ADMIN));
 
         (bool success, bytes memory result) =
-            registerProxyAddress.call(abi.encodeWithSignature("userOf(address)", USER));
+            address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
         User user = util_ResultAsUser(success, result);
         assertEq("user", user.getNick());
         assertEq(0, user.getIndex());
@@ -163,7 +139,7 @@ contract RegisterTest is Test {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
 
-        (bool success, bytes memory result) = registerProxyAddress.call(abi.encodeWithSignature("me()"));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
         assertEq("user", util_ResultAsUser(success, result).getNick());
 
         User user = registerProxy.me();
@@ -187,7 +163,7 @@ contract RegisterTest is Test {
         expectedNicks[0] = "user";
         expectedNicks[1] = "owner";
 
-        (bool success, bytes memory result) = registerProxyAddress.call(abi.encodeWithSignature("getAllNicks()"));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("getAllNicks()"));
         assertTrue(success);
         string[] memory allNicksResult = abi.decode(result, (string[]));
         assertEq(expectedNicks, allNicksResult);
@@ -218,7 +194,7 @@ contract RegisterTest is Test {
     function test_RevertWhen_TryingToReinitializeUser() public {
         util_RegisterAccount(USER, "user");
 
-        (bool success, bytes memory result) = registerProxyAddress.call(abi.encodeWithSignature("me()"));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
         User user = util_ResultAsUser(success, result);
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
@@ -275,7 +251,7 @@ contract RegisterTest is Test {
     function test_MetaTransaction() public {
         ERC2771ForwarderUpgradeable.ForwardRequestData memory request = ERC2771ForwarderUpgradeable.ForwardRequestData({
             from: SIGNER,
-            to: registerProxyAddress,
+            to: address(registerProxy),
             data: abi.encodeCall(Register.registerMeAs, ("signer")),
             value: 0,
             gas: 1000000,
@@ -289,7 +265,7 @@ contract RegisterTest is Test {
 
         vm.prank(address(USER_ADMIN));
         (bool success, bytes memory result) =
-            registerProxyAddress.call(abi.encodeWithSignature("userOf(string)", "signer"));
+            address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "signer"));
         User user = util_ResultAsUser(success, result);
         assertEq("signer", user.getNick());
         assertEq(0, user.getIndex());
@@ -303,7 +279,7 @@ contract RegisterTest is Test {
     function test_Upgrade_Register_RevertWhen_DirectUpgrade() public {
         vm.expectRevert(abi.encodeWithSelector(UUPSUpgradeable.UUPSUnauthorizedCallContext.selector));
         registerImpl.upgradeToAndCall(
-            address(registerV2), abi.encodeWithSignature("initialize(address)", accessManagerUpgradeable)
+            address(registerV2), abi.encodeCall(Register.initialize, (address(accessManager), userBeaconHolder))
         );
     }
 
@@ -344,7 +320,7 @@ contract RegisterTest is Test {
     function util_RegisterAccount(address account, string memory nick) private returns (User user) {
         vm.prank(account);
         (bool success, bytes memory result) =
-            registerProxyAddress.call(abi.encodeWithSignature("registerMeAs(string)", nick));
+            address(registerProxy).call(abi.encodeWithSignature("registerMeAs(string)", nick));
         return util_ResultAsUser(success, result);
     }
 
@@ -357,12 +333,13 @@ contract RegisterTest is Test {
     function util_UserOf(string memory nick) private returns (User) {
         vm.prank(address(USER_ADMIN));
 
-        (bool success, bytes memory result) = registerProxyAddress.call(abi.encodeWithSignature("userOf(string)", nick));
+        (bool success, bytes memory result) =
+            address(registerProxy).call(abi.encodeWithSignature("userOf(string)", nick));
         return util_ResultAsUser(success, result);
     }
 
     function util_getTotalUsers() private returns (uint256) {
-        (bool success, bytes memory result) = registerProxyAddress.call(abi.encodeWithSignature("getTotalUsers()"));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("getTotalUsers()"));
         assertTrue(success);
         uint256 totalUsers = abi.decode(result, (uint256));
         return totalUsers;
