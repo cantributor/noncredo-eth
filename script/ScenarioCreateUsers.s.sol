@@ -13,14 +13,21 @@ contract ScenarioCreateUsers is Script {
 
     function setUp() public {}
 
-    function run(address registerProxyAddress, uint256 ownerPrivateKey, uint256 userPrivateKey) public {
+    function run(
+        address registerProxyAddress,
+        uint256 ownerPrivateKey,
+        uint256 user1PrivateKey,
+        uint256 user2PrivateKey
+    ) public {
         registerProxy = Register(registerProxyAddress);
         console.log("Message sender:", msg.sender);
 
         vm.broadcast(ownerPrivateKey);
         registerProxy.registerMeAs("owner");
-        vm.broadcast(userPrivateKey);
-        registerProxy.registerMeAs("user");
+        vm.broadcast(user1PrivateKey);
+        registerProxy.registerMeAs("user1");
+        vm.broadcast(user2PrivateKey);
+        registerProxy.registerMeAs("user2");
 
         vm.startBroadcast(ownerPrivateKey);
         console.log("Total users: ", registerProxy.getTotalUsers());
