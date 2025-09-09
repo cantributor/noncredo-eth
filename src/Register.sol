@@ -140,7 +140,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
             address(userBeaconHolder.beacon()),
-            abi.encodeCall(User.initialize, (msgSender, nickShortString, users.length, address(this)))
+            abi.encodeCall(User.initialize, (msgSender, nickShortString, uint32(users.length), address(this)))
         );
         user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;
@@ -165,7 +165,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         delete userByNick[user.getNickShortString()];
         delete userByAccount[user.owner()];
-        uint256 userIndex = user.getIndex();
+        uint32 userIndex = user.getIndex();
         users[userIndex] = users[users.length - 1];
         users[userIndex].setIndex(userIndex);
         users.pop();
