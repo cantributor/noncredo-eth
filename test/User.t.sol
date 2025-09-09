@@ -3,51 +3,110 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
+import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Register} from "src/Register.sol";
+import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
 
+import {DeployScript} from "../script/Deploy.s.sol";
+
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 contract UserTest is Test {
-    address private constant USER_REGISTER_ADDRESS = address(1);
+    IAccessManager private accessManager;
+    Register private registerProxy;
+    AccessManagedBeaconHolder private userBeaconHolder;
 
-    UpgradeableBeacon private userUpgradeableBeacon;
+    address private constant OWNER = address(1);
+    address private constant UPGRADE_ADMIN = address(0xA);
+    address private constant USER_ADMIN = address(0xB);
+    address private immutable USER = address(this);
+
+    User private userV2Impl;
 
     function setUp() public {
-        userUpgradeableBeacon = new UpgradeableBeacon(address(new User()), address(this));
+        vm.label(OWNER, "OWNER");
+        vm.label(USER, "USER");
+        vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
+        vm.label(USER_ADMIN, "USER_ADMIN");
+
+        DeployScript deployScript = new DeployScript();
+        (accessManager,,, registerProxy, userBeaconHolder) = deployScript.createContracts(OWNER);
+        deployScript.grantAccessToRoles(OWNER, accessManager, address(registerProxy), address(userBeaconHolder));
+
+        vm.startPrank(OWNER);
+        accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
+        accessManager.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
+        vm.stopPrank();
+
+        userV2Impl = new UserV2();
     }
 
     function test_BasicUsage() public {
-        User user = util_createUser(address(this), ShortStrings.toShortString("user"), 1);
+        User user = registerProxy.registerMeAs("user");
 
         assertEq("user", user.getNick());
-        assertEq(1, user.getIndex());
+        assertEq(0, user.getIndex());
 
-        vm.prank(USER_REGISTER_ADDRESS);
+        vm.prank(address(registerProxy));
         user.setIndex(777);
 
         assertEq(777, user.getIndex());
     }
 
     function test_setIndex_RevertWhen_IllegalIndexChange() public {
-        User user = util_createUser(address(this), ShortStrings.toShortString("user"), 1);
+        User user = registerProxy.registerMeAs("user");
 
         vm.expectRevert(abi.encodeWithSelector(User.UnauthorizedIndexChange.selector, this));
         user.setIndex(666);
     }
 
-    function util_createUser(address owner, ShortString nickShortString, uint256 index) private returns (User user) {
-        BeaconProxy userBeaconProxy = new BeaconProxy(
-            address(userUpgradeableBeacon),
-            abi.encodeWithSignature(
-                "initialize(address,bytes32,uint256,address)", owner, nickShortString, index, USER_REGISTER_ADDRESS
-            )
-        );
-        user = User(address(userBeaconProxy));
-        return user;
+    function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
+        userBeaconHolder.upgradeTo(address(userV2Impl));
+    }
+
+    function test_Upgrade_User_Successful() public {
+        console.log(string.concat("abc", "123"));
+
+        registerProxy.registerMeAs("user");
+        vm.prank(USER_ADMIN);
+        User user = registerProxy.userOf("user");
+        assertEq("user", user.getNick());
+
+        vm.prank(UPGRADE_ADMIN);
+        userBeaconHolder.upgradeTo(address(userV2Impl));
+
+        vm.prank(OWNER);
+        registerProxy.registerMeAs("owner");
+
+        vm.startPrank(USER_ADMIN);
+
+        assertEq("user_", user.getNick());
+        assertEq("owner_", registerProxy.userOf("owner").getNick());
+
+        UserV2 userV2 = UserV2(address(registerProxy.userOf("user")));
+        userV2.setSuffix("V2");
+        assertEq("user_V2", user.getNick());
+
+        vm.stopPrank();
+    }
+}
+
+contract UserV2 is User {
+    string private suffix = "V2";
+
+    function getNick() public view override returns (string memory) {
+        return string.concat(super.getNick(), "_", suffix);
+    }
+
+    function setSuffix(string calldata _suffix) external {
+        suffix = _suffix;
     }
 }

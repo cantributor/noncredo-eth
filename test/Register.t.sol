@@ -3,12 +3,14 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
+import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
 import {Utils} from "src/Utils.sol";
-import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
-import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
+
+import {DeployScript} from "../script/Deploy.s.sol";
 
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
@@ -18,7 +20,6 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {DeployScript} from "../script/Deploy.s.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract RegisterTest is Test {
@@ -37,7 +38,6 @@ contract RegisterTest is Test {
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     Register private registerV2;
-    User private userV2Impl;
 
     function setUp() public {
         vm.label(OWNER, "OWNER");
@@ -57,7 +57,6 @@ contract RegisterTest is Test {
         vm.stopPrank();
 
         registerV2 = new RegisterV2(address(erc2771Forwarder));
-        userV2Impl = new UserV2();
     }
 
     function test_RevertWhen_CallerIsNotAuthorized() public {
@@ -292,35 +291,9 @@ contract RegisterTest is Test {
         assertEq(util_getTotalUsers(), 777);
     }
 
-    function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
-        userBeaconHolder.upgradeTo(address(userV2Impl));
-    }
-
-    function test_Upgrade_User_Successful() public {
-        console.log(string.concat("abc", "123"));
-
-        util_RegisterAccount(USER, "user");
-        User user = util_UserOf("user");
-        assertEq("user", user.getNick());
-
-        vm.prank(UPGRADE_ADMIN);
-        userBeaconHolder.upgradeTo(address(userV2Impl));
-
-        util_RegisterAccount(OWNER, "owner");
-
-        assertEq("user_", user.getNick());
-        assertEq("owner_", util_UserOf("owner").getNick());
-
-        UserV2 userV2 = UserV2(address(util_UserOf("user")));
-        userV2.setSuffix("V2");
-        assertEq("user_V2", user.getNick());
-    }
-
     function util_RegisterAccount(address account, string memory nick) private returns (User user) {
         vm.prank(account);
-        (bool success, bytes memory result) =
-            address(registerProxy).call(abi.encodeWithSignature("registerMeAs(string)", nick));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeCall(Register.registerMeAs, nick));
         return util_ResultAsUser(success, result);
     }
 
@@ -362,17 +335,5 @@ contract RegisterV2 is Register {
 
     function getTotalUsers() external pure override returns (uint256) {
         return 777;
-    }
-}
-
-contract UserV2 is User {
-    string private suffix = "V2";
-
-    function getNick() public view override returns (string memory) {
-        return string.concat(super.getNick(), "_", suffix);
-    }
-
-    function setSuffix(string calldata _suffix) external {
-        suffix = _suffix;
     }
 }
