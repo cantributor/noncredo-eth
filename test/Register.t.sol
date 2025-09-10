@@ -79,7 +79,7 @@ contract RegisterTest is Test {
 
         User userToRemove = registerProxy.registerMeAs("user");
         vm.expectRevert(encodedUnauthorized);
-        registerProxy.remove(userToRemove);
+        registerProxy.remove(address(userToRemove));
     }
 
     function test_RevertWhen_NickTooShortOrTooLong() public {
@@ -200,7 +200,7 @@ contract RegisterTest is Test {
         user.initialize(USER, ShortStrings.toShortString("hacker"), 666, address(registerImpl));
     }
 
-    function test_remove() public {
+    function test_removeUser() public {
         vm.prank(address(101));
         User user1 = registerProxy.registerMeAs("user1");
         vm.prank(address(102));
@@ -220,11 +220,11 @@ contract RegisterTest is Test {
         assertEq(address(user3), address(util_UserOf("user3")));
         assertEq(2, util_UserOf("user3").getIndex());
 
-        vm.expectEmit(true, true, false, false);
-        emit Register.UserRemoved(address(102), "user2");
+        vm.expectEmit(true, true, true, false);
+        emit Register.UserRemoved(address(102), "user2", USER_ADMIN);
 
-        vm.prank(USER_ADMIN);
-        registerProxy.remove(user2);
+        vm.prank(USER_ADMIN, USER_ADMIN);
+        registerProxy.remove(address(user2));
 
         assertEq(2, registerProxy.getTotalUsers());
 
@@ -245,6 +245,14 @@ contract RegisterTest is Test {
 
         assertEq(0, util_UserOf("user1").getIndex());
         assertEq(1, util_UserOf("user3").getIndex());
+    }
+
+    function test_removeMe_RevertWhen_IllegalCaller() public {
+        registerProxy.registerMeAs("user");
+
+        vm.expectRevert(abi.encodeWithSelector(Register.RemoveCallForIllegalEntity.selector, USER, OWNER));
+        vm.prank(USER, OWNER);
+        registerProxy.removeMe();
     }
 
     function test_MetaTransaction() public {

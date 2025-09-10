@@ -2,21 +2,23 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IUser} from "./IUser.sol";
+import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
+import {Riddle} from "./Riddle.sol";
 import {Roles} from "./Roles.sol";
 import {User} from "./User.sol";
 import {Utils} from "./Utils.sol";
-import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
 import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 /**
  * @title Register
@@ -28,10 +30,10 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         _disableInitializers();
     }
 
-    mapping(address account => User user) private userByAccount;
-    mapping(ShortString nick => User user) private userByNick;
+    mapping(address account => User user) internal userByAccount;
+    mapping(ShortString nick => User user) internal userByNick;
 
-    User[] private users;
+    User[] internal users;
 
     AccessManagedBeaconHolder public userBeaconHolder;
 
@@ -60,6 +62,13 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     error AccountAlreadyRegistered(address account);
 
     /**
+     * @dev Remove called for illegal entity. It should be User contract
+     * @param entity Entity for which remove called
+     * @param caller Who initiated
+     */
+    error RemoveCallForIllegalEntity(address entity, address caller);
+
+    /**
      * @dev User successfully registered
      * @param owner User owner address
      * @param nick User nick
@@ -70,8 +79,9 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev User successfully removed
      * @param owner User owner address
      * @param nick User nick
+     * @param remover Who removed
      */
-    event UserRemoved(address indexed owner, string indexed nick);
+    event UserRemoved(address indexed owner, string indexed nick, address indexed remover);
 
     /**
      * @dev Initializable implementation
@@ -154,7 +164,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Remove user
      * @param user User to remove
      */
-    function remove(User user) external virtual restricted {
+    function removeUser(User user) internal virtual {
         address foundByNick = address(userByNick[user.getNickShortString()]);
         if (foundByNick == address(0)) {
             revert NickNotRegistered(user.getNick());
@@ -169,7 +179,34 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         users[userIndex] = users[users.length - 1];
         users[userIndex].setIndex(userIndex);
         users.pop();
-        emit UserRemoved(user.owner(), user.getNick());
+        user.goodbye();
+        emit UserRemoved(user.owner(), user.getNick(), tx.origin);
+    }
+
+    /**
+     * @dev Removal implementation
+     * @param contractAddress Contract to remove
+     */
+    function removalImplementation(address contractAddress) internal virtual {
+        bool isUser = ERC165Checker.supportsInterface(contractAddress, type(IUser).interfaceId);
+        if (!isUser) {
+            revert RemoveCallForIllegalEntity(contractAddress, tx.origin);
+        }
+        removeUser(User(contractAddress));
+    }
+
+    /**
+     * @dev Remove contract if it is User
+     */
+    function remove(address contractAddress) external virtual restricted {
+        removalImplementation(contractAddress);
+    }
+
+    /**
+     * @dev Remove caller if it is User
+     */
+    function removeMe() external virtual {
+        removalImplementation(_msgSender());
     }
 
     /**

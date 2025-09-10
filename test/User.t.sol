@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {IUser} from "src/IUser.sol";
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Register} from "src/Register.sol";
@@ -17,6 +18,7 @@ import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/Upgradeabl
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract UserTest is Test {
     IAccessManager private accessManager;
@@ -60,11 +62,31 @@ contract UserTest is Test {
         assertEq(777, user.getIndex());
     }
 
-    function test_setIndex_RevertWhen_IllegalIndexChange() public {
+    function test_remove_Successful() public {
+        User user = registerProxy.registerMeAs("user"); // owner: USER
+
+        assertEq(1, registerProxy.getTotalUsers());
+        user.remove();
+
+        assertEq(0, registerProxy.getTotalUsers());
+    }
+
+    function test_RevertWhen_NotOwnerCalls() public {
+        User user = registerProxy.registerMeAs("user"); // owner: USER
+
+        vm.prank(OWNER);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, OWNER));
+        user.remove();
+    }
+
+    function test_RevertWhen_NotRegisterCalls() public {
         User user = registerProxy.registerMeAs("user");
 
-        vm.expectRevert(abi.encodeWithSelector(User.UnauthorizedIndexChange.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(IUser.OnlyRegisterMayCallThis.selector, this));
         user.setIndex(666);
+
+        vm.expectRevert(abi.encodeWithSelector(IUser.OnlyRegisterMayCallThis.selector, this));
+        user.goodbye();
     }
 
     function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {
@@ -102,8 +124,8 @@ contract UserTest is Test {
 contract UserV2 is User {
     string private suffix = "V2";
 
-    function getNick() public view override returns (string memory) {
-        return string.concat(super.getNick(), "_", suffix);
+    function getNick() external view override returns (string memory) {
+        return string.concat(ShortStrings.toString(nick), "_", suffix);
     }
 
     function setSuffix(string calldata _suffix) external {

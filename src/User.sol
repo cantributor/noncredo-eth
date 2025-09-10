@@ -2,6 +2,10 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IUser} from "./IUser.sol";
+import {Register} from "./Register.sol";
+
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
@@ -10,16 +14,10 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
  * @title User
  * @dev User contract
  */
-contract User is OwnableUpgradeable {
-    ShortString private nick;
-    uint32 private index;
+contract User is IUser, OwnableUpgradeable, ERC165 {
+    ShortString internal nick;
+    uint32 internal index;
     address internal registerAddress;
-
-    /**
-     * @dev Trying to change index not from Register.sol
-     * @param msgSender Illegal message sender
-     */
-    error UnauthorizedIndexChange(address msgSender);
 
     constructor() {
         _disableInitializers();
@@ -43,37 +41,45 @@ contract User is OwnableUpgradeable {
     }
 
     /**
-     * @dev Get nick as string
-     * @return Nick string
+     * @dev Throws if called by any account other than the Register contract remembered in registerAddress
      */
-    function getNick() public view virtual returns (string memory) {
+    modifier onlyForRegister() {
+        if (msg.sender != registerAddress) {
+            revert OnlyRegisterMayCallThis(msg.sender);
+        }
+        _;
+    }
+
+    function getNick() external view virtual override returns (string memory) {
         return ShortStrings.toString(nick);
     }
 
-    /**
-     * @dev Get nick ShortString
-     * @return Nick ShortString
-     */
-    function getNickShortString() public view virtual returns (ShortString) {
+    function getNickShortString() external view override returns (ShortString) {
         return nick;
     }
 
-    /**
-     * @dev Get index of user
-     * @return result User index
-     */
-    function getIndex() public view virtual returns (uint32) {
+    function getIndex() external view override returns (uint32) {
         return index;
     }
 
+    function setIndex(uint32 _index) external virtual override onlyForRegister {
+        index = _index;
+    }
+
+    function goodbye() external virtual override onlyForRegister {
+        // TODO: implement riddles removing
+        // TODO: implement stop operating
+    }
+
+    function remove() external virtual override onlyOwner {
+        Register(registerAddress).removeMe();
+    }
+
     /**
-     * @dev Set index of user
-     * @param newIndex New index value
+     * @dev Implementation of ERC165
+     * @param interfaceId Interface identifier
      */
-    function setIndex(uint32 newIndex) public virtual {
-        if (msg.sender != registerAddress) {
-            revert UnauthorizedIndexChange(msg.sender);
-        }
-        index = newIndex;
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IUser).interfaceId || super.supportsInterface(interfaceId);
     }
 }
