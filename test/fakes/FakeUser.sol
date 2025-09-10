@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.0.0
+pragma solidity 0.8.28;
+
+import {IUser} from "src/IUser.sol";
+import {Register} from "src/Register.sol";
+
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
+
+/**
+ * @dev FakeUser repeats User except:
+ * FakeUser is not OwnableUpgradeable so it can be create without any proxy stuff
+ * FakeUser allows to call its remove to anybody (now OnlyOwner modifier on remove function)
+ */
+contract FakeUser is IUser, Ownable, ERC165 {
+    ShortString internal nick;
+    uint32 internal index;
+    address internal registerAddress;
+
+    constructor(address initialOwner, ShortString _nick, uint32 _index, address _registerAddress)
+        Ownable(initialOwner)
+    {
+        nick = _nick;
+        index = _index;
+        registerAddress = _registerAddress;
+    }
+
+    function getNick() external view virtual override returns (string memory) {
+        return ShortStrings.toString(nick);
+    }
+
+    function getNickShortString() external view override returns (ShortString) {
+        return nick;
+    }
+
+    function getIndex() external view override returns (uint32) {
+        return index;
+    }
+
+    function setIndex(uint32 _index) external virtual override {
+        index = _index;
+    }
+
+    function goodbye() external virtual override {}
+
+    function remove() external virtual override {
+        Register(registerAddress).removeMe();
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IUser).interfaceId || interfaceId == type(OwnableUpgradeable).interfaceId
+            || super.supportsInterface(interfaceId);
+    }
+}

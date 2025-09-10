@@ -66,6 +66,7 @@ contract UserTest is Test {
         User user = registerProxy.registerMeAs("user"); // owner: USER
 
         assertEq(1, registerProxy.getTotalUsers());
+        vm.prank(USER, USER);
         user.remove();
 
         assertEq(0, registerProxy.getTotalUsers());

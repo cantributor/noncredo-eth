@@ -80,6 +80,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      * @param interfaceId Interface identifier
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IUser).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(IUser).interfaceId || interfaceId == type(OwnableUpgradeable).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 }

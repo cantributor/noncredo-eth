@@ -34,18 +34,18 @@ interface IUser {
     function getIndex() external view returns (uint32);
 
     /**
-     * @dev Set index of user
+     * @dev Set index of user (should be implemented with onlyForRegister modifier)
      * @param _index New index value
      */
     function setIndex(uint32 _index) external;
 
     /**
-     * @dev Clean all children contracts and stop operating
+     * @dev Clean all children contracts and stop operating (should be implemented with onlyForRegister modifier)
      */
     function goodbye() external;
 
     /**
-     * @dev Remove this contract from Register
+     * @dev Remove this contract from Register (should be implemented with OnlyOwner modifier)
      */
     function remove() external;
 }

@@ -18,9 +18,12 @@ import {ERC2771ForwarderUpgradeable} from "@openzeppelin/contracts-upgradeable/m
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+
+import {FakeUser} from "./fakes/FakeUser.sol";
 
 contract RegisterTest is Test {
     IAccessManager private accessManager;
@@ -34,6 +37,7 @@ contract RegisterTest is Test {
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
     address private constant USER_ADMIN = address(0xB);
+    address private constant BAD_GUY = address(0xC);
     address private immutable USER = address(this);
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
@@ -45,6 +49,7 @@ contract RegisterTest is Test {
         vm.label(SIGNER, "SIGNER");
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
         vm.label(USER_ADMIN, "USER_ADMIN");
+        vm.label(BAD_GUY, "BAD_GUY");
 
         DeployScript deployScript = new DeployScript();
         (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder) =
@@ -253,6 +258,26 @@ contract RegisterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Register.RemoveCallForIllegalEntity.selector, USER, OWNER));
         vm.prank(USER, OWNER);
         registerProxy.removeMe();
+    }
+
+    function test_removeMe_RevertWhen_FakeUser() public {
+        User user = registerProxy.registerMeAs("user"); // owner: USER
+        console.log("User owner:", user.owner());
+        assertEq(1, registerProxy.getTotalUsers());
+
+        vm.startPrank(BAD_GUY, BAD_GUY);
+        FakeUser fakeUser =
+            new FakeUser(user.owner(), user.getNickShortString(), user.getIndex(), address(registerProxy));
+        console.log("Fake user owner:", fakeUser.owner());
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Register.RemoveCallForIllegalEntity.selector, address(fakeUser), BAD_GUY)
+        );
+        fakeUser.remove();
+
+        vm.stopPrank();
+
+        assertEq(1, registerProxy.getTotalUsers());
     }
 
     function test_MetaTransaction() public {

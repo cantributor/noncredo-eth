@@ -15,6 +15,7 @@ import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/met
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
@@ -161,7 +162,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Remove user
+     * @dev Remove user. Internal implementation
      * @param user User to remove
      */
     function removeUser(User user) internal virtual {
@@ -184,7 +185,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Removal implementation
+     * @dev Remove contract if it is User. Internal implementation
      * @param contractAddress Contract to remove
      */
     function removalImplementation(address contractAddress) internal virtual {
@@ -196,17 +197,28 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Remove contract if it is User
+     * @dev Remove contract - restricted access function (for admins)
      */
     function remove(address contractAddress) external virtual restricted {
         removalImplementation(contractAddress);
     }
 
     /**
-     * @dev Remove caller if it is User
+     * @dev Remove caller if it is owned by tx.origin
      */
     function removeMe() external virtual {
-        removalImplementation(_msgSender());
+        address contractAddress = _msgSender();
+        bool isOwnableUpgradeable =
+            ERC165Checker.supportsInterface(contractAddress, type(OwnableUpgradeable).interfaceId);
+        if (!isOwnableUpgradeable) {
+            revert RemoveCallForIllegalEntity(contractAddress, tx.origin);
+        }
+        OwnableUpgradeable ownableUpgradeable = OwnableUpgradeable(contractAddress);
+        address owner = ownableUpgradeable.owner();
+        if (owner != tx.origin) {
+            revert RemoveCallForIllegalEntity(contractAddress, tx.origin);
+        }
+        removalImplementation(contractAddress);
     }
 
     /**
