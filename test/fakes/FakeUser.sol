@@ -17,8 +17,8 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
  * FakeUser allows to call its remove to anybody (now OnlyOwner modifier on remove function)
  */
 contract FakeUser is IUser, Ownable, ERC165 {
-    ShortString internal nick;
-    uint32 internal index;
+    ShortString public nick;
+    uint32 public index;
     address internal registerAddress;
 
     constructor(address initialOwner, ShortString _nick, uint32 _index, address _registerAddress)
@@ -29,16 +29,8 @@ contract FakeUser is IUser, Ownable, ERC165 {
         registerAddress = _registerAddress;
     }
 
-    function getNick() external view virtual override returns (string memory) {
+    function nickString() external view virtual override returns (string memory) {
         return ShortStrings.toString(nick);
-    }
-
-    function getNickShortString() external view override returns (ShortString) {
-        return nick;
-    }
-
-    function getIndex() external view override returns (uint32) {
-        return index;
     }
 
     function setIndex(uint32 _index) external virtual override {

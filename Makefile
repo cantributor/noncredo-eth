@@ -1,7 +1,7 @@
 include .env
 
 build:
-	forge clean && forge build
+	forge fmt & forge clean && forge build
 
 test: build
 	forge test

@@ -15,9 +15,15 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
  * @dev User contract
  */
 contract User is IUser, OwnableUpgradeable, ERC165 {
-    ShortString internal nick;
-    uint32 internal index;
+    ShortString public nick;
+    uint32 public index;
     address internal registerAddress;
+
+    /**
+     * @dev Trying to call some function that should be called only by Register contract
+     * @param illegalCaller Illegal caller
+     */
+    error OnlyRegisterMayCallThis(address illegalCaller);
 
     constructor() {
         _disableInitializers();
@@ -50,27 +56,33 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         _;
     }
 
-    function getNick() external view virtual override returns (string memory) {
+    /**
+     * @dev Get nick as string
+     * @return Nick string
+     */
+    function nickString() external view virtual override returns (string memory) {
         return ShortStrings.toString(nick);
     }
 
-    function getNickShortString() external view override returns (ShortString) {
-        return nick;
-    }
-
-    function getIndex() external view override returns (uint32) {
-        return index;
-    }
-
+    /**
+     * @dev Set index of user (should be implemented with onlyForRegister modifier)
+     * @param _index New index value
+     */
     function setIndex(uint32 _index) external virtual override onlyForRegister {
         index = _index;
     }
 
+    /**
+     * @dev Clean all children contracts and stop operating (should be implemented with onlyForRegister modifier)
+     */
     function goodbye() external virtual override onlyForRegister {
         // TODO: implement riddles removing
         // TODO: implement stop operating
     }
 
+    /**
+     * @dev Remove this contract from Register (should be implemented with OnlyOwner modifier)
+     */
     function remove() external virtual override onlyOwner {
         Register(registerAddress).removeMe();
     }

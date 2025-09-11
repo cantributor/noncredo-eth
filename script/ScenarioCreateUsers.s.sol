@@ -35,7 +35,7 @@ contract ScenarioCreateUsers is Script {
         for (uint256 i = 0; i < userNicks.length; i++) {
             User user = registerProxy.userOf(userNicks[i]);
             string memory owner = Strings.toHexString(uint256(uint160(user.owner())), 20);
-            console.log("User", user.getIndex(), user.getNick(), owner);
+            console.log("User", user.index(), user.nickString(), owner);
         }
         vm.stopBroadcast();
     }

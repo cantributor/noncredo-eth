@@ -3,12 +3,13 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
-import {IUser} from "src/IUser.sol";
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
+
+import {UserV2} from "./upgrades/UserV2.sol";
 
 import {DeployScript} from "../script/Deploy.s.sol";
 
@@ -53,13 +54,13 @@ contract UserTest is Test {
     function test_BasicUsage() public {
         User user = registerProxy.registerMeAs("user");
 
-        assertEq("user", user.getNick());
-        assertEq(0, user.getIndex());
+        assertEq("user", user.nickString());
+        assertEq(0, user.index());
 
         vm.prank(address(registerProxy));
         user.setIndex(777);
 
-        assertEq(777, user.getIndex());
+        assertEq(777, user.index());
     }
 
     function test_remove_Successful() public {
@@ -83,10 +84,10 @@ contract UserTest is Test {
     function test_RevertWhen_NotRegisterCalls() public {
         User user = registerProxy.registerMeAs("user");
 
-        vm.expectRevert(abi.encodeWithSelector(IUser.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(User.OnlyRegisterMayCallThis.selector, this));
         user.setIndex(666);
 
-        vm.expectRevert(abi.encodeWithSelector(IUser.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(User.OnlyRegisterMayCallThis.selector, this));
         user.goodbye();
     }
 
@@ -101,7 +102,7 @@ contract UserTest is Test {
         registerProxy.registerMeAs("user");
         vm.prank(USER_ADMIN);
         User user = registerProxy.userOf("user");
-        assertEq("user", user.getNick());
+        assertEq("user", user.nickString());
 
         vm.prank(UPGRADE_ADMIN);
         userBeaconHolder.upgradeTo(address(userV2Impl));
@@ -111,25 +112,13 @@ contract UserTest is Test {
 
         vm.startPrank(USER_ADMIN);
 
-        assertEq("user_", user.getNick());
-        assertEq("owner_", registerProxy.userOf("owner").getNick());
+        assertEq("user_", user.nickString());
+        assertEq("owner_", registerProxy.userOf("owner").nickString());
 
         UserV2 userV2 = UserV2(address(registerProxy.userOf("user")));
         userV2.setSuffix("V2");
-        assertEq("user_V2", user.getNick());
+        assertEq("user_V2", user.nickString());
 
         vm.stopPrank();
-    }
-}
-
-contract UserV2 is User {
-    string private suffix = "V2";
-
-    function getNick() external view override returns (string memory) {
-        return string.concat(ShortStrings.toString(nick), "_", suffix);
-    }
-
-    function setSuffix(string calldata _suffix) external {
-        suffix = _suffix;
     }
 }

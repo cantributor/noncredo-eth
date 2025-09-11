@@ -86,10 +86,11 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     /**
      * @dev Initializable implementation
-     * @param initialAuthority Access manager
+     * @param _initialAuthority Access manager
+     * @param _userBeaconHolder AccessManagedBeaconHolder for User contract
      */
-    function initialize(address initialAuthority, AccessManagedBeaconHolder _userBeaconHolder) public initializer {
-        __AccessManaged_init(initialAuthority);
+    function initialize(address _initialAuthority, AccessManagedBeaconHolder _userBeaconHolder) public initializer {
+        __AccessManaged_init(_initialAuthority);
         __UUPSUpgradeable_init();
         userBeaconHolder = _userBeaconHolder;
     }
@@ -166,22 +167,22 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param user User to remove
      */
     function removeUser(User user) internal virtual {
-        address foundByNick = address(userByNick[user.getNickShortString()]);
+        address foundByNick = address(userByNick[user.nick()]);
         if (foundByNick == address(0)) {
-            revert NickNotRegistered(user.getNick());
+            revert NickNotRegistered(user.nickString());
         }
         address foundByAccount = address(userByAccount[user.owner()]);
         if (foundByAccount == address(0)) {
             revert AccountNotRegistered(user.owner());
         }
-        delete userByNick[user.getNickShortString()];
+        delete userByNick[user.nick()];
         delete userByAccount[user.owner()];
-        uint32 userIndex = user.getIndex();
+        uint32 userIndex = user.index();
         users[userIndex] = users[users.length - 1];
         users[userIndex].setIndex(userIndex);
         users.pop();
         user.goodbye();
-        emit UserRemoved(user.owner(), user.getNick(), tx.origin);
+        emit UserRemoved(user.owner(), user.nickString(), tx.origin);
     }
 
     /**
@@ -237,7 +238,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         uint256 totalUsers = users.length;
         result = new string[](totalUsers);
         for (uint256 i = 0; i < totalUsers; ++i) {
-            result[i] = users[i].getNick();
+            result[i] = users[i].nickString();
         }
         return result;
     }

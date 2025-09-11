@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
@@ -9,6 +10,8 @@ import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
 import {Utils} from "src/Utils.sol";
+
+import {RegisterV2} from "./upgrades/RegisterV2.sol";
 
 import {DeployScript} from "../script/Deploy.s.sol";
 
@@ -125,18 +128,18 @@ contract RegisterTest is Test {
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
         User user = util_ResultAsUser(success, result);
-        assertEq("user", user.getNick());
-        assertEq(0, user.getIndex());
+        assertEq("user", user.nickString());
+        assertEq(0, user.index());
     }
 
     function test_userOfString() public {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
 
-        assertEq("user", util_UserOf("user").getNick());
-        assertEq(0, util_UserOf("user").getIndex());
-        assertEq("owner", util_UserOf("owner").getNick());
-        assertEq(1, util_UserOf("owner").getIndex());
+        assertEq("user", util_UserOf("user").nickString());
+        assertEq(0, util_UserOf("user").index());
+        assertEq("owner", util_UserOf("owner").nickString());
+        assertEq(1, util_UserOf("owner").index());
     }
 
     function test_me() public {
@@ -144,10 +147,10 @@ contract RegisterTest is Test {
         util_RegisterAccount(OWNER, "owner");
 
         (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
-        assertEq("user", util_ResultAsUser(success, result).getNick());
+        assertEq("user", util_ResultAsUser(success, result).nickString());
 
         User user = registerProxy.me();
-        assertEq("user", user.getNick());
+        assertEq("user", user.nickString());
     }
 
     function test_getTotalUsers() public {
@@ -191,8 +194,8 @@ contract RegisterTest is Test {
 
         User user = util_RegisterAccount(USER, "user");
 
-        assertEq("user", user.getNick());
-        assertEq(0, user.getIndex());
+        assertEq("user", user.nickString());
+        assertEq(0, user.index());
     }
 
     function test_RevertWhen_TryingToReinitializeUser() public {
@@ -216,14 +219,14 @@ contract RegisterTest is Test {
         assertEq(3, registerProxy.getTotalUsers());
 
         assertEq(address(user1), address(util_UserOf("user1")));
-        assertEq(0, util_UserOf("user1").getIndex());
+        assertEq(0, util_UserOf("user1").index());
 
         assertEq(address(user2), address(util_UserOf("user2")));
-        assertEq(1, util_UserOf("user2").getIndex());
-        assertEq(1, user2.getIndex());
+        assertEq(1, util_UserOf("user2").index());
+        assertEq(1, user2.index());
 
         assertEq(address(user3), address(util_UserOf("user3")));
-        assertEq(2, util_UserOf("user3").getIndex());
+        assertEq(2, util_UserOf("user3").index());
 
         vm.expectEmit(true, true, true, false);
         emit Register.UserRemoved(address(102), "user2", USER_ADMIN);
@@ -248,8 +251,8 @@ contract RegisterTest is Test {
         string[] memory allNicksResult = registerProxy.getAllNicks();
         assertEq(expectedNicks, allNicksResult);
 
-        assertEq(0, util_UserOf("user1").getIndex());
-        assertEq(1, util_UserOf("user3").getIndex());
+        assertEq(0, util_UserOf("user1").index());
+        assertEq(1, util_UserOf("user3").index());
     }
 
     function test_removeMe_RevertWhen_IllegalCaller() public {
@@ -266,8 +269,7 @@ contract RegisterTest is Test {
         assertEq(1, registerProxy.getTotalUsers());
 
         vm.startPrank(BAD_GUY, BAD_GUY);
-        FakeUser fakeUser =
-            new FakeUser(user.owner(), user.getNickShortString(), user.getIndex(), address(registerProxy));
+        FakeUser fakeUser = new FakeUser(user.owner(), user.nick(), user.index(), address(registerProxy));
         console.log("Fake user owner:", fakeUser.owner());
 
         vm.expectRevert(
@@ -299,8 +301,8 @@ contract RegisterTest is Test {
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "signer"));
         User user = util_ResultAsUser(success, result);
-        assertEq("signer", user.getNick());
-        assertEq(0, user.getIndex());
+        assertEq("signer", user.nickString());
+        assertEq(0, user.index());
     }
 
     function test_Upgrade_Register_RevertWhen_CallerIsNotAuthorized() public {
@@ -360,13 +362,5 @@ contract RegisterTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, digest);
         request.signature = abi.encodePacked(r, s, v);
         return request;
-    }
-}
-
-contract RegisterV2 is Register {
-    constructor(address trustedForwarder) Register(trustedForwarder) {}
-
-    function getTotalUsers() external pure override returns (uint256) {
-        return 777;
     }
 }
