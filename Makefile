@@ -6,7 +6,7 @@ build:
 test: build
 	forge test
 
-anvil-deploy: build
+anvil-deploy: test
 	forge script script/Deploy.s.sol:DeployScript --rpc-url anvil --broadcast -v \
       --private-key ${ANVIL_OWNER_PRIVATE_KEY}
 

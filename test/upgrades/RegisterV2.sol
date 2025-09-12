@@ -7,7 +7,7 @@ import {Register} from "src/Register.sol";
 contract RegisterV2 is Register {
     constructor(address trustedForwarder) Register(trustedForwarder) {}
 
-    function getTotalUsers() external pure override returns (uint256) {
+    function totalUsers() external pure override returns (uint32) {
         return 777;
     }
 }

@@ -2,7 +2,11 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {IUser} from "src/IUser.sol";
+import {console} from "forge-std/Test.sol";
+
+import {IUser} from "../../src/interfaces/IUser.sol";
+
+import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -27,6 +31,15 @@ contract FakeUser is IUser, Ownable, ERC165 {
         nick = _nick;
         index = _index;
         registerAddress = _registerAddress;
+    }
+
+    function commit(string calldata statement) external virtual override returns (Riddle) {
+        console.log("Just to escape compiler warning about statement not used", statement);
+        return Riddle(address(0));
+    }
+
+    function totalRiddles() external view virtual override returns (uint32) {
+        return 0;
     }
 
     function nickString() external view virtual override returns (string memory) {

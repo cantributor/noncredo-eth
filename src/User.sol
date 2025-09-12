@@ -2,9 +2,15 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {IUser} from "./IUser.sol";
-import {Register} from "./Register.sol";
+import {IUser} from "./interfaces/IUser.sol";
+import {IRiddle} from "./interfaces/IRiddle.sol";
 
+import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
+import {Register} from "./Register.sol";
+import {Riddle} from "./Riddle.sol";
+import {Utils} from "./Utils.sol";
+
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
@@ -18,6 +24,8 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
     ShortString public nick;
     uint32 public index;
     address internal registerAddress;
+
+    Riddle[] internal riddles;
 
     /**
      * @dev Trying to call some function that should be called only by Register contract
@@ -54,6 +62,35 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
             revert OnlyRegisterMayCallThis(msg.sender);
         }
         _;
+    }
+
+    /**
+     * @dev Commit new Riddle contract
+     * @param statement Riddle statement
+     */
+    function commit(string calldata statement) external virtual override onlyOwner returns (Riddle riddle) {
+        Utils.validateRiddle(statement);
+        Register register = Register(registerAddress);
+        AccessManagedBeaconHolder riddleBeaconHolder = register.riddleBeaconHolder();
+        BeaconProxy riddleBeaconProxy = new BeaconProxy(
+            address(riddleBeaconHolder.beacon()),
+            abi.encodeCall(
+                Riddle.initialize,
+                (owner(), register.nextRiddleId(), register.totalRiddles(), uint32(riddles.length), statement)
+            )
+        );
+        riddle = Riddle(address(riddleBeaconProxy));
+        riddles.push(riddle);
+        register.registerRiddle(riddle);
+        return riddle;
+    }
+
+    /**
+     * @dev Get number of active user riddles
+     * @return number of active user riddles
+     */
+    function totalRiddles() external view virtual override returns (uint32) {
+        return uint32(riddles.length);
     }
 
     /**

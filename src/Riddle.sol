@@ -2,21 +2,20 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {User} from "./User.sol";
+import {IRiddle} from "./interfaces/IRiddle.sol";
+import {IUser} from "./interfaces/IUser.sol";
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
-import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
 /**
  * @title Riddle
  * @dev Riddle
  */
-contract Riddle is OwnableUpgradeable {
+contract Riddle is IRiddle, OwnableUpgradeable {
     uint32 public id;
     uint32 public registerIndex;
     uint32 public userIndex;
-    User public author;
+    IUser public author;
 
     string public statement;
 
@@ -50,18 +49,5 @@ contract Riddle is OwnableUpgradeable {
         registerIndex = _registerIndex;
         userIndex = _userIndex;
         statement = _statement;
-    }
-
-    /**
-     * @dev Set indexes
-     * @param _registerIndex New registerIndex value
-     * @param _userIndex New userIndex value
-     */
-    function setIndexes(uint32 _registerIndex, uint32 _userIndex) public virtual {
-        if (msg.sender != address(author)) {
-            revert UnauthorizedIndexChange(msg.sender);
-        }
-        registerIndex = _registerIndex;
-        userIndex = _userIndex;
     }
 }

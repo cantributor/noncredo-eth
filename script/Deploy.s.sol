@@ -5,6 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {Register} from "src/Register.sol";
+import {Riddle} from "src/Riddle.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
@@ -21,6 +22,7 @@ contract DeployScript is Script {
     Register private registerImpl;
     Register private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
+    AccessManagedBeaconHolder private riddleBeaconHolder;
 
     function setUp() public {}
 
@@ -29,9 +31,12 @@ contract DeployScript is Script {
 
         vm.startBroadcast();
 
-        (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder) = createContracts(msg.sender);
+        (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder, riddleBeaconHolder) =
+            createContracts(msg.sender);
 
-        grantAccessToRoles(address(0), accessManager, address(registerProxy), address(userBeaconHolder));
+        grantAccessToRoles(
+            address(0), accessManager, address(registerProxy), address(userBeaconHolder), address(riddleBeaconHolder)
+        );
 
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, msg.sender, 0);
         accessManager.grantRole(Roles.USER_ADMIN_ROLE, msg.sender, 0);
@@ -47,7 +52,8 @@ contract DeployScript is Script {
             ERC2771Forwarder resultErc2771Forwarder,
             Register resultRegisterImpl,
             Register resultRegisterProxy,
-            AccessManagedBeaconHolder resultAccessManagedUserBeaconHolder
+            AccessManagedBeaconHolder resultAccessManagedUserBeaconHolder,
+            AccessManagedBeaconHolder resultAccessManagedRiddleBeaconHolder
         )
     {
         AccessManagerUpgradeable accessManagerUpgradeable = new AccessManagerUpgradeable();
@@ -64,25 +70,38 @@ contract DeployScript is Script {
         UpgradeableBeacon userUpgradeableBeacon = UpgradeableBeacon(userUpgradeableBeaconAddress);
         resultAccessManagedUserBeaconHolder.initialize(userUpgradeableBeacon);
 
+        resultAccessManagedRiddleBeaconHolder = new AccessManagedBeaconHolder(address(accessManagerUpgradeable));
+        address riddleUpgradeableBeaconAddress =
+            UnsafeUpgrades.deployBeacon(address(new Riddle()), address(resultAccessManagedRiddleBeaconHolder));
+        UpgradeableBeacon riddleUpgradeableBeacon = UpgradeableBeacon(riddleUpgradeableBeaconAddress);
+        resultAccessManagedRiddleBeaconHolder.initialize(riddleUpgradeableBeacon);
+
         resultRegisterImpl = new Register(address(resultErc2771Forwarder));
 
         address registerProxyAddress = UnsafeUpgrades.deployUUPSProxy(
             address(resultRegisterImpl),
             abi.encodeCall(
-                Register.initialize, (address(accessManagerUpgradeable), resultAccessManagedUserBeaconHolder)
+                Register.initialize,
+                (
+                    address(accessManagerUpgradeable),
+                    resultAccessManagedUserBeaconHolder,
+                    resultAccessManagedRiddleBeaconHolder
+                )
             )
         );
         resultRegisterProxy = Register(address(registerProxyAddress));
-        console.log("User beacon holder address: ", address(resultAccessManagedUserBeaconHolder));
-        console.log("Register implementation address: ", address(registerImpl));
-        console.log("Register proxy address: ", address(registerProxy));
+        console.log("Beacon holder address for User contract: ", address(resultAccessManagedUserBeaconHolder));
+        console.log("Beacon holder address for Riddle contract: ", address(resultAccessManagedRiddleBeaconHolder));
+        console.log("Register implementation address: ", address(resultRegisterImpl));
+        console.log("Register proxy address: ", address(resultRegisterProxy));
 
         return (
             accessManagerUpgradeable,
             resultErc2771Forwarder,
             resultRegisterImpl,
             resultRegisterProxy,
-            resultAccessManagedUserBeaconHolder
+            resultAccessManagedUserBeaconHolder,
+            resultAccessManagedRiddleBeaconHolder
         );
     }
 
@@ -90,7 +109,8 @@ contract DeployScript is Script {
         address userForPrank,
         IAccessManager accessMgr,
         address registerProxyAddr,
-        address userBeaconHolderAddr
+        address userBeaconHolderAddr,
+        address riddleBeaconHolderAddr
     ) public {
         if (userForPrank != address(0)) {
             vm.startPrank(userForPrank);
@@ -115,6 +135,10 @@ contract DeployScript is Script {
         bytes4[] memory userBeaconUpgradeToSelector = new bytes4[](1);
         userBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
         accessMgr.setTargetFunctionRole(userBeaconHolderAddr, userBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE);
+
+        bytes4[] memory riddleBeaconUpgradeToSelector = new bytes4[](1);
+        riddleBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
+        accessMgr.setTargetFunctionRole(riddleBeaconHolderAddr, riddleBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE);
 
         if (userForPrank != address(0)) {
             vm.stopPrank();

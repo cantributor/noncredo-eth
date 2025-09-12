@@ -2,7 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {IUser} from "./IUser.sol";
+import {IUser} from "./interfaces/IUser.sol";
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 import {Riddle} from "./Riddle.sol";
 import {Roles} from "./Roles.sol";
@@ -11,11 +11,11 @@ import {Utils} from "./Utils.sol";
 
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
-import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
@@ -37,6 +37,10 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     User[] internal users;
 
     AccessManagedBeaconHolder public userBeaconHolder;
+    AccessManagedBeaconHolder public riddleBeaconHolder;
+
+    uint32 public riddleCounter = 0;
+    Riddle[] internal riddles;
 
     /**
      * @dev Trying to get unregistered account
@@ -63,11 +67,13 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     error AccountAlreadyRegistered(address account);
 
     /**
-     * @dev Remove called for illegal entity. It should be User contract
-     * @param entity Entity for which remove called
-     * @param caller Who initiated
+     * @dev Action call for illegal object or by illegal object
+     * @param action Action called
+     * @param object Object of action
+     * @param msgSender Message sender
+     * @param txOrigin Transaction origin
      */
-    error RemoveCallForIllegalEntity(address entity, address caller);
+    error IllegalActionCall(string action, address object, address msgSender, address txOrigin);
 
     /**
      * @dev User successfully registered
@@ -88,11 +94,17 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Initializable implementation
      * @param _initialAuthority Access manager
      * @param _userBeaconHolder AccessManagedBeaconHolder for User contract
+     * @param _riddleBeaconHolder AccessManagedBeaconHolder for Riddle contract
      */
-    function initialize(address _initialAuthority, AccessManagedBeaconHolder _userBeaconHolder) public initializer {
+    function initialize(
+        address _initialAuthority,
+        AccessManagedBeaconHolder _userBeaconHolder,
+        AccessManagedBeaconHolder _riddleBeaconHolder
+    ) public initializer {
         __AccessManaged_init(_initialAuthority);
         __UUPSUpgradeable_init();
         userBeaconHolder = _userBeaconHolder;
+        riddleBeaconHolder = _riddleBeaconHolder;
     }
 
     /**
@@ -186,15 +198,15 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Remove contract if it is User. Internal implementation
+     * @dev Remove contract if it is registered User (internal implementation)
      * @param contractAddress Contract to remove
      */
     function removalImplementation(address contractAddress) internal virtual {
-        bool isUser = ERC165Checker.supportsInterface(contractAddress, type(IUser).interfaceId);
-        if (!isUser) {
-            revert RemoveCallForIllegalEntity(contractAddress, tx.origin);
+        if (addressIsRegisteredUser(contractAddress)) {
+            removeUser(User(contractAddress));
+        } else {
+            revert IllegalActionCall("remove", contractAddress, _msgSender(), tx.origin);
         }
-        removeUser(User(contractAddress));
     }
 
     /**
@@ -205,42 +217,59 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Remove caller if it is owned by tx.origin
+     * @dev Remove caller
      */
     function removeMe() external virtual {
-        address contractAddress = _msgSender();
-        bool isOwnableUpgradeable =
-            ERC165Checker.supportsInterface(contractAddress, type(OwnableUpgradeable).interfaceId);
-        if (!isOwnableUpgradeable) {
-            revert RemoveCallForIllegalEntity(contractAddress, tx.origin);
-        }
-        OwnableUpgradeable ownableUpgradeable = OwnableUpgradeable(contractAddress);
-        address owner = ownableUpgradeable.owner();
-        if (owner != tx.origin) {
-            revert RemoveCallForIllegalEntity(contractAddress, tx.origin);
-        }
-        removalImplementation(contractAddress);
+        removalImplementation(_msgSender());
     }
 
     /**
      * @dev Get total number of users
      * @return total number of users
      */
-    function getTotalUsers() external view virtual returns (uint256) {
-        return users.length;
+    function totalUsers() external view virtual returns (uint32) {
+        return uint32(users.length);
     }
 
     /**
      * @dev Get all nicks
      * @return result All nicks array
      */
-    function getAllNicks() external view virtual returns (string[] memory result) {
-        uint256 totalUsers = users.length;
-        result = new string[](totalUsers);
-        for (uint256 i = 0; i < totalUsers; ++i) {
+    function allNicks() external view virtual returns (string[] memory result) {
+        uint256 usersLength = users.length;
+        result = new string[](usersLength);
+        for (uint256 i = 0; i < usersLength; ++i) {
             result[i] = users[i].nickString();
         }
         return result;
+    }
+
+    /**
+     * @dev Riddle id generator
+     * @return Next riddle id value
+     */
+    function nextRiddleId() external virtual returns (uint32) {
+        riddleCounter++;
+        return riddleCounter;
+    }
+
+    /**
+     * @dev Get total number of active riddles
+     * @return total number of active riddles
+     */
+    function totalRiddles() external view virtual returns (uint32) {
+        return uint32(riddles.length);
+    }
+
+    /**
+     * @dev Register riddle
+     */
+    function registerRiddle(Riddle riddle) external virtual {
+        address userAddress = _msgSender();
+        if (!addressIsRegisteredUser(userAddress)) {
+            revert IllegalActionCall("registerRiddle", address(riddle), userAddress, tx.origin);
+        }
+        riddles.push(riddle);
     }
 
     /**
@@ -285,5 +314,18 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         returns (bytes calldata)
     {
         return ERC2771ContextUpgradeable._msgData();
+    }
+
+    /**
+     * @dev Check if address is registered user
+     */
+    function addressIsRegisteredUser(address userAddress) internal view virtual returns (bool) {
+        bool isUser = ERC165Checker.supportsInterface(userAddress, type(IUser).interfaceId);
+        if (isUser) {
+            User user = User(userAddress);
+            return userByAccount[user.owner()] == user;
+        } else {
+            return false;
+        }
     }
 }

@@ -9,21 +9,40 @@ library Utils {
     uint8 private constant MIN_NICK_LENGTH = 3;
     uint8 private constant MAX_NICK_LENGTH = 31;
 
+    uint8 private constant MIN_RIDDLE_LENGTH = 10;
+    uint8 private constant MAX_RIDDLE_LENGTH = 128;
+
     /**
      * @dev Too short nick
      * @param nick Too short nick
-     * @param length Nick length
+     * @param actualLength Actual length
      * @param correctLength Correct length
      */
-    error NickTooShort(string nick, uint256 length, uint8 correctLength);
+    error NickTooShort(string nick, uint256 actualLength, uint8 correctLength);
 
     /**
      * @dev Too long nick
      * @param nick Too long nick
-     * @param length Nick length
+     * @param actualLength Actual length
      * @param correctLength Correct length
      */
-    error NickTooLong(string nick, uint256 length, uint8 correctLength);
+    error NickTooLong(string nick, uint256 actualLength, uint8 correctLength);
+
+    /**
+     * @dev Too short riddle
+     * @param riddle Too short riddle
+     * @param actualLength Actual length
+     * @param correctLength Correct length
+     */
+    error RiddleTooShort(string riddle, uint256 actualLength, uint8 correctLength);
+
+    /**
+     * @dev Too long riddle
+     * @param riddle Too long riddle
+     * @param actualLength Actual length
+     * @param correctLength Correct length
+     */
+    error RiddleTooLong(string riddle, uint256 actualLength, uint8 correctLength);
 
     function validateNick(string calldata nick) internal pure returns (ShortString) {
         bytes memory nickBytes = bytes(nick);
@@ -37,5 +56,16 @@ library Utils {
         ShortString nickShortString = ShortStrings.toShortString(nick);
 
         return nickShortString;
+    }
+
+    function validateRiddle(string calldata riddle) internal pure {
+        bytes memory riddleBytes = bytes(riddle);
+
+        if (riddleBytes.length > MAX_RIDDLE_LENGTH) {
+            revert RiddleTooLong(riddle, riddleBytes.length, MAX_RIDDLE_LENGTH);
+        }
+        if (riddleBytes.length < MIN_RIDDLE_LENGTH) {
+            revert RiddleTooShort(riddle, riddleBytes.length, MIN_RIDDLE_LENGTH);
+        }
     }
 }

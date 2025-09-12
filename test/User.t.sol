@@ -5,9 +5,11 @@ import {Test, console} from "forge-std/Test.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
+import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
+import {Utils} from "src/Utils.sol";
 
 import {UserV2} from "./upgrades/UserV2.sol";
 
@@ -25,6 +27,7 @@ contract UserTest is Test {
     IAccessManager private accessManager;
     Register private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
+    AccessManagedBeaconHolder private riddleBeaconHolder;
 
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
@@ -40,8 +43,10 @@ contract UserTest is Test {
         vm.label(USER_ADMIN, "USER_ADMIN");
 
         DeployScript deployScript = new DeployScript();
-        (accessManager,,, registerProxy, userBeaconHolder) = deployScript.createContracts(OWNER);
-        deployScript.grantAccessToRoles(OWNER, accessManager, address(registerProxy), address(userBeaconHolder));
+        (accessManager,,, registerProxy, userBeaconHolder, riddleBeaconHolder) = deployScript.createContracts(OWNER);
+        deployScript.grantAccessToRoles(
+            OWNER, accessManager, address(registerProxy), address(userBeaconHolder), address(riddleBeaconHolder)
+        );
 
         vm.startPrank(OWNER);
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
@@ -51,7 +56,7 @@ contract UserTest is Test {
         userV2Impl = new UserV2();
     }
 
-    function test_BasicUsage() public {
+    function test_setIndex() public {
         User user = registerProxy.registerMeAs("user");
 
         assertEq("user", user.nickString());
@@ -66,11 +71,11 @@ contract UserTest is Test {
     function test_remove_Successful() public {
         User user = registerProxy.registerMeAs("user"); // owner: USER
 
-        assertEq(1, registerProxy.getTotalUsers());
+        assertEq(1, registerProxy.totalUsers());
         vm.prank(USER, USER);
         user.remove();
 
-        assertEq(0, registerProxy.getTotalUsers());
+        assertEq(0, registerProxy.totalUsers());
     }
 
     function test_RevertWhen_NotOwnerCalls() public {
@@ -89,6 +94,34 @@ contract UserTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(User.OnlyRegisterMayCallThis.selector, this));
         user.goodbye();
+    }
+
+    function test_commit_RevertWhen_StatementTooShortOrTooLong() public {
+        User user = registerProxy.registerMeAs("user");
+
+        vm.expectRevert(abi.encodeWithSelector(Utils.RiddleTooShort.selector, "I'm man", 7, 10));
+        user.commit("I'm man");
+
+        string memory longString = string.concat(
+            "12345678901234567890123456789012345678901234567890",
+            "12345678901234567890123456789012345678901234567890",
+            "12345678901234567890123456789012345678901234567890"
+        );
+        vm.expectRevert(abi.encodeWithSelector(Utils.RiddleTooLong.selector, longString, 150, 128));
+        user.commit(longString);
+    }
+
+    function test_commit_Successful() public {
+        User user = registerProxy.registerMeAs("user");
+        assertEq(0, registerProxy.totalRiddles());
+
+        Riddle riddle = user.commit("I am President");
+        assertEq(1, registerProxy.totalRiddles());
+        assertEq(USER, riddle.owner());
+        assertEq("I am President", riddle.statement());
+        assertEq(1, riddle.id());
+        assertEq(0, riddle.userIndex());
+        assertEq(0, riddle.registerIndex());
     }
 
     function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {

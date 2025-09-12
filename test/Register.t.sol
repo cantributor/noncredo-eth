@@ -6,6 +6,7 @@ import {Test, console} from "forge-std/Test.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
+import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
@@ -34,6 +35,7 @@ contract RegisterTest is Test {
     Register private registerImpl;
     Register private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
+    AccessManagedBeaconHolder private riddleBeaconHolder;
 
     uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
 
@@ -55,9 +57,11 @@ contract RegisterTest is Test {
         vm.label(BAD_GUY, "BAD_GUY");
 
         DeployScript deployScript = new DeployScript();
-        (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder) =
+        (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder, riddleBeaconHolder) =
             deployScript.createContracts(OWNER);
-        deployScript.grantAccessToRoles(OWNER, accessManager, address(registerProxy), address(userBeaconHolder));
+        deployScript.grantAccessToRoles(
+            OWNER, accessManager, address(registerProxy), address(userBeaconHolder), address(riddleBeaconHolder)
+        );
 
         vm.startPrank(OWNER);
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
@@ -153,7 +157,7 @@ contract RegisterTest is Test {
         assertEq("user", user.nickString());
     }
 
-    function test_getTotalUsers() public {
+    function test_totalUsers() public {
         assertEq(util_getTotalUsers(), 0);
 
         util_RegisterAccount(USER, "user");
@@ -162,7 +166,7 @@ contract RegisterTest is Test {
         assertEq(util_getTotalUsers(), 2);
     }
 
-    function test_getAllNicks() public {
+    function test_allNicks() public {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
 
@@ -170,7 +174,7 @@ contract RegisterTest is Test {
         expectedNicks[0] = "user";
         expectedNicks[1] = "owner";
 
-        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("getAllNicks()"));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("allNicks()"));
         assertTrue(success);
         string[] memory allNicksResult = abi.decode(result, (string[]));
         assertEq(expectedNicks, allNicksResult);
@@ -216,7 +220,7 @@ contract RegisterTest is Test {
         vm.prank(address(103));
         User user3 = registerProxy.registerMeAs("user3");
 
-        assertEq(3, registerProxy.getTotalUsers());
+        assertEq(3, registerProxy.totalUsers());
 
         assertEq(address(user1), address(util_UserOf("user1")));
         assertEq(0, util_UserOf("user1").index());
@@ -234,7 +238,7 @@ contract RegisterTest is Test {
         vm.prank(USER_ADMIN, USER_ADMIN);
         registerProxy.remove(address(user2));
 
-        assertEq(2, registerProxy.getTotalUsers());
+        assertEq(2, registerProxy.totalUsers());
 
         vm.prank(USER_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, address(102)));
@@ -248,7 +252,7 @@ contract RegisterTest is Test {
         expectedNicks[0] = "user1";
         expectedNicks[1] = "user3";
 
-        string[] memory allNicksResult = registerProxy.getAllNicks();
+        string[] memory allNicksResult = registerProxy.allNicks();
         assertEq(expectedNicks, allNicksResult);
 
         assertEq(0, util_UserOf("user1").index());
@@ -258,7 +262,7 @@ contract RegisterTest is Test {
     function test_removeMe_RevertWhen_IllegalCaller() public {
         registerProxy.registerMeAs("user");
 
-        vm.expectRevert(abi.encodeWithSelector(Register.RemoveCallForIllegalEntity.selector, USER, OWNER));
+        vm.expectRevert(abi.encodeWithSelector(Register.IllegalActionCall.selector, "remove", USER, USER, OWNER));
         vm.prank(USER, OWNER);
         registerProxy.removeMe();
     }
@@ -266,20 +270,22 @@ contract RegisterTest is Test {
     function test_removeMe_RevertWhen_FakeUser() public {
         User user = registerProxy.registerMeAs("user"); // owner: USER
         console.log("User owner:", user.owner());
-        assertEq(1, registerProxy.getTotalUsers());
+        assertEq(1, registerProxy.totalUsers());
 
         vm.startPrank(BAD_GUY, BAD_GUY);
         FakeUser fakeUser = new FakeUser(user.owner(), user.nick(), user.index(), address(registerProxy));
         console.log("Fake user owner:", fakeUser.owner());
 
         vm.expectRevert(
-            abi.encodeWithSelector(Register.RemoveCallForIllegalEntity.selector, address(fakeUser), BAD_GUY)
+            abi.encodeWithSelector(
+                Register.IllegalActionCall.selector, "remove", address(fakeUser), address(fakeUser), BAD_GUY
+            )
         );
         fakeUser.remove();
 
         vm.stopPrank();
 
-        assertEq(1, registerProxy.getTotalUsers());
+        assertEq(1, registerProxy.totalUsers());
     }
 
     function test_MetaTransaction() public {
@@ -313,7 +319,8 @@ contract RegisterTest is Test {
     function test_Upgrade_Register_RevertWhen_DirectUpgrade() public {
         vm.expectRevert(abi.encodeWithSelector(UUPSUpgradeable.UUPSUnauthorizedCallContext.selector));
         registerImpl.upgradeToAndCall(
-            address(registerV2), abi.encodeCall(Register.initialize, (address(accessManager), userBeaconHolder))
+            address(registerV2),
+            abi.encodeCall(Register.initialize, (address(accessManager), userBeaconHolder, riddleBeaconHolder))
         );
     }
 
@@ -347,7 +354,7 @@ contract RegisterTest is Test {
     }
 
     function util_getTotalUsers() private returns (uint256) {
-        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("getTotalUsers()"));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("totalUsers()"));
         assertTrue(success);
         uint256 totalUsers = abi.decode(result, (uint256));
         return totalUsers;
