@@ -33,6 +33,21 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      */
     error OnlyRegisterMayCallThis(address illegalCaller);
 
+    /**
+     * @dev User successfully registered
+     * @param owner User owner address
+     * @param nick User nick
+     */
+    event UserRegistered(address indexed owner, string indexed nick);
+
+    /**
+     * @dev User successfully removed
+     * @param owner User owner address
+     * @param nick User nick
+     * @param remover Who removed
+     */
+    event UserRemoved(address indexed owner, string indexed nick, address indexed remover);
+
     constructor() {
         _disableInitializers();
     }
@@ -76,7 +91,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
             address(riddleBeaconHolder.beacon()),
             abi.encodeCall(
                 Riddle.initialize,
-                (owner(), register.nextRiddleId(), register.totalRiddles(), uint32(riddles.length), statement)
+                (owner(), register.nextRiddleId(), register.totalRiddles(), uint32(riddles.length), this, statement)
             )
         );
         riddle = Riddle(address(riddleBeaconProxy));

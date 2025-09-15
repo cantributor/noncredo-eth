@@ -84,6 +84,10 @@ contract UserTest is Test {
         vm.prank(OWNER);
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, OWNER));
         user.remove();
+
+        vm.prank(OWNER);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, OWNER));
+        user.commit("I am President");
     }
 
     function test_RevertWhen_NotRegisterCalls() public {
@@ -115,6 +119,9 @@ contract UserTest is Test {
         User user = registerProxy.registerMeAs("user");
         assertEq(0, registerProxy.totalRiddles());
 
+        vm.expectEmit(true, true, false, true);
+        emit Riddle.RiddleRegistered(address(user), 1, keccak256(abi.encode("I am President")));
+
         Riddle riddle = user.commit("I am President");
         assertEq(1, registerProxy.totalRiddles());
         assertEq(USER, riddle.owner());
@@ -122,6 +129,22 @@ contract UserTest is Test {
         assertEq(1, riddle.id());
         assertEq(0, riddle.userIndex());
         assertEq(0, riddle.registerIndex());
+    }
+
+    function test_commit_RevertWhen_RiddleAlreadyRegistered() public {
+        User user1 = registerProxy.registerMeAs("user1");
+        vm.prank(OWNER);
+        User user2 = registerProxy.registerMeAs("user2");
+        assertEq(0, registerProxy.totalRiddles());
+
+        string memory riddleStatement = "I am President";
+        user1.commit(riddleStatement);
+
+        vm.expectRevert(abi.encodeWithSelector(Riddle.RiddleAlreadyRegistered.selector, 1, "user1", 0));
+        vm.prank(OWNER);
+        user2.commit(riddleStatement);
+
+        assertEq(1, registerProxy.totalRiddles());
     }
 
     function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {

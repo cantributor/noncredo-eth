@@ -41,6 +41,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     uint32 public riddleCounter = 0;
     Riddle[] internal riddles;
+    mapping(bytes32 statementHash => Riddle) internal riddleByStatement;
 
     /**
      * @dev Trying to get unregistered account
@@ -74,21 +75,6 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param txOrigin Transaction origin
      */
     error IllegalActionCall(string action, address object, address msgSender, address txOrigin);
-
-    /**
-     * @dev User successfully registered
-     * @param owner User owner address
-     * @param nick User nick
-     */
-    event UserRegistered(address indexed owner, string indexed nick);
-
-    /**
-     * @dev User successfully removed
-     * @param owner User owner address
-     * @param nick User nick
-     * @param remover Who removed
-     */
-    event UserRemoved(address indexed owner, string indexed nick, address indexed remover);
 
     /**
      * @dev Initializable implementation
@@ -170,7 +156,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         users.push(user);
-        emit UserRegistered(msgSender, nick);
+        emit User.UserRegistered(msgSender, nick);
         return user;
     }
 
@@ -194,7 +180,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         users[userIndex].setIndex(userIndex);
         users.pop();
         user.goodbye();
-        emit UserRemoved(user.owner(), user.nickString(), tx.origin);
+        emit User.UserRemoved(user.owner(), user.nickString(), tx.origin);
     }
 
     /**
@@ -263,13 +249,23 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     /**
      * @dev Register riddle
+     * @param riddle Riddle contract to register
      */
     function registerRiddle(Riddle riddle) external virtual {
+        bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
+        Riddle foundRiddle = riddleByStatement[statementHash];
+        if (address(foundRiddle) != address(0)) {
+            revert Riddle.RiddleAlreadyRegistered(
+                foundRiddle.id(), foundRiddle.user().nickString(), foundRiddle.userIndex()
+            );
+        }
         address userAddress = _msgSender();
         if (!addressIsRegisteredUser(userAddress)) {
             revert IllegalActionCall("registerRiddle", address(riddle), userAddress, tx.origin);
         }
         riddles.push(riddle);
+        riddleByStatement[statementHash] = riddle;
+        emit Riddle.RiddleRegistered(address(riddle.user()), riddle.id(), statementHash);
     }
 
     /**

@@ -194,7 +194,7 @@ contract RegisterTest is Test {
     function test_emit_UserRegistered() public {
         vm.expectEmit(true, true, false, false);
 
-        emit Register.UserRegistered(address(USER), "user");
+        emit User.UserRegistered(address(USER), "user");
 
         User user = util_RegisterAccount(USER, "user");
 
@@ -233,7 +233,7 @@ contract RegisterTest is Test {
         assertEq(2, util_UserOf("user3").index());
 
         vm.expectEmit(true, true, true, false);
-        emit Register.UserRemoved(address(102), "user2", USER_ADMIN);
+        emit User.UserRemoved(address(102), "user2", USER_ADMIN);
 
         vm.prank(USER_ADMIN, USER_ADMIN);
         registerProxy.remove(address(user2));
