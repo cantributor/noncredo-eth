@@ -156,7 +156,6 @@ contract UserTest is Test {
         console.log(string.concat("abc", "123"));
 
         registerProxy.registerMeAs("user");
-        vm.prank(USER_ADMIN);
         User user = registerProxy.userOf("user");
         assertEq("user", user.nickString());
 

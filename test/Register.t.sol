@@ -75,20 +75,6 @@ contract RegisterTest is Test {
         bytes memory encodedUnauthorized =
             abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER);
 
-        vm.expectRevert(encodedUnauthorized);
-        registerImpl.userOf(USER);
-
-        vm.expectRevert(encodedUnauthorized);
-        registerImpl.userOf("user");
-
-        vm.expectRevert(encodedUnauthorized);
-        (bool s1,) = address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
-        assertTrue(s1);
-
-        vm.expectRevert(encodedUnauthorized);
-        (bool s2,) = address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "user"));
-        assertTrue(s2);
-
         User userToRemove = registerProxy.registerMeAs("user");
         vm.expectRevert(encodedUnauthorized);
         registerProxy.remove(address(userToRemove));
@@ -126,8 +112,6 @@ contract RegisterTest is Test {
     function test_userOfAddress() public {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
-
-        vm.prank(address(USER_ADMIN));
 
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
@@ -213,12 +197,9 @@ contract RegisterTest is Test {
     }
 
     function test_removeUser() public {
-        vm.prank(address(101));
-        User user1 = registerProxy.registerMeAs("user1");
-        vm.prank(address(102));
-        User user2 = registerProxy.registerMeAs("user2");
-        vm.prank(address(103));
-        User user3 = registerProxy.registerMeAs("user3");
+        User user1 = util_RegisterAccount(address(101), "user1");
+        User user2 = util_RegisterAccount(address(102), "user2");
+        User user3 = util_RegisterAccount(address(103), "user3");
 
         assertEq(3, registerProxy.totalUsers());
 
@@ -240,11 +221,9 @@ contract RegisterTest is Test {
 
         assertEq(2, registerProxy.totalUsers());
 
-        vm.prank(USER_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, address(102)));
         registerProxy.userOf(address(102));
 
-        vm.prank(USER_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(Register.NickNotRegistered.selector, "user2"));
         registerProxy.userOf("user2");
 
@@ -303,7 +282,6 @@ contract RegisterTest is Test {
 
         erc2771Forwarder.execute(request);
 
-        vm.prank(address(USER_ADMIN));
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "signer"));
         User user = util_ResultAsUser(success, result);
@@ -346,8 +324,6 @@ contract RegisterTest is Test {
     }
 
     function util_UserOf(string memory nick) private returns (User) {
-        vm.prank(address(USER_ADMIN));
-
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(string)", nick));
         return util_ResultAsUser(success, result);

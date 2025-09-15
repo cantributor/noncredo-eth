@@ -116,14 +116,6 @@ contract DeployScript is Script {
             vm.startPrank(userForPrank);
         }
 
-        bytes4[] memory userOfStringSelector = new bytes4[](1);
-        userOfStringSelector[0] = bytes4(keccak256("userOf(string)"));
-        accessMgr.setTargetFunctionRole(registerProxyAddr, userOfStringSelector, Roles.USER_ADMIN_ROLE);
-
-        bytes4[] memory userOfAddressSelector = new bytes4[](1);
-        userOfAddressSelector[0] = bytes4(keccak256("userOf(address)"));
-        accessMgr.setTargetFunctionRole(registerProxyAddr, userOfAddressSelector, Roles.USER_ADMIN_ROLE);
-
         bytes4[] memory removeSelector = new bytes4[](1);
         removeSelector[0] = bytes4(keccak256("remove(address)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, removeSelector, Roles.USER_ADMIN_ROLE);

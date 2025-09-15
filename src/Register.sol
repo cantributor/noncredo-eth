@@ -98,7 +98,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param account User account
      * @return user of account
      */
-    function userOf(address account) external virtual restricted returns (User) {
+    function userOf(address account) external virtual returns (User) {
         User foundUser = userByAccount[account];
         if (address(foundUser) == address(0)) {
             revert AccountNotRegistered(account);
@@ -111,7 +111,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param nick Account nick
      * @return user
      */
-    function userOf(string memory nick) external virtual restricted returns (User) {
+    function userOf(string memory nick) external virtual returns (User) {
         ShortString nickShortString = ShortStrings.toShortString(nick);
         User user = userByNick[nickShortString];
         if (address(user) == address(0)) {
