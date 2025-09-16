@@ -2,6 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {Register} from "./Register.sol";
 import {IRiddle} from "./interfaces/IRiddle.sol";
 import {IUser} from "./interfaces/IUser.sol";
 
@@ -19,6 +20,9 @@ contract Riddle is IRiddle, OwnableUpgradeable {
 
     string public statement;
     uint256 internal encryptedSolution;
+
+    uint256 public guessDeadline;
+    uint256 public revealDeadline;
 
     /**
      * @dev Riddle already registered
@@ -66,5 +70,9 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         user = _user;
         statement = _statement;
         encryptedSolution = _encryptedSolution;
+
+        Register reg = user.register();
+        guessDeadline = block.number + reg.guessDurationBlocks();
+        revealDeadline = guessDeadline + reg.revealDurationBlocks();
     }
 }

@@ -120,6 +120,10 @@ contract DeployScript is Script {
         removeSelector[0] = bytes4(keccak256("remove(address)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, removeSelector, Roles.USER_ADMIN_ROLE);
 
+        bytes4[] memory setGuessAndRevealDurationSelector = new bytes4[](1);
+        setGuessAndRevealDurationSelector[0] = bytes4(keccak256("setGuessAndRevealDuration(uint16,uint16)"));
+        accessMgr.setTargetFunctionRole(registerProxyAddr, setGuessAndRevealDurationSelector, Roles.UPGRADE_ADMIN_ROLE);
+
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE);

@@ -40,6 +40,8 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     AccessManagedBeaconHolder public riddleBeaconHolder;
 
     uint32 public riddleCounter = 0;
+    uint16 public guessDurationBlocks = 3 * 24 * 60 * (60 / 12); // 3 days * 24 hours * 60 minutes (12 seconds per block)
+    uint16 public revealDurationBlocks = 24 * 60 * (60 / 12); // 24 hours * 60 minutes (12 seconds per block)
     Riddle[] internal riddles;
     mapping(bytes32 statementHash => Riddle) internal riddleByStatement;
 
@@ -266,6 +268,20 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         riddles.push(riddle);
         riddleByStatement[statementHash] = riddle;
         emit Riddle.RiddleRegistered(address(riddle.user()), riddle.id(), statementHash);
+    }
+
+    /**
+     * @dev Set guess duration (in blocks)
+     * @param _guessDurationBlocks New guess duration value
+     * @param _revealDurationBlocks New reveal duration value
+     */
+    function setGuessAndRevealDuration(uint16 _guessDurationBlocks, uint16 _revealDurationBlocks)
+        external
+        virtual
+        restricted
+    {
+        guessDurationBlocks = _guessDurationBlocks;
+        revealDurationBlocks = _revealDurationBlocks;
     }
 
     /**

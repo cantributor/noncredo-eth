@@ -78,6 +78,12 @@ contract RegisterTest is Test {
         User userToRemove = registerProxy.registerMeAs("user");
         vm.expectRevert(encodedUnauthorized);
         registerProxy.remove(address(userToRemove));
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.upgradeToAndCall(address(registerV2), "");
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.setGuessAndRevealDuration(1, 1);
     }
 
     function test_RevertWhen_NickTooShortOrTooLong() public {
@@ -287,11 +293,6 @@ contract RegisterTest is Test {
         User user = util_ResultAsUser(success, result);
         assertEq("signer", user.nickString());
         assertEq(0, user.index());
-    }
-
-    function test_Upgrade_Register_RevertWhen_CallerIsNotAuthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
-        registerProxy.upgradeToAndCall(address(registerV2), "");
     }
 
     function test_Upgrade_Register_RevertWhen_DirectUpgrade() public {

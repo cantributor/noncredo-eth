@@ -56,6 +56,9 @@ contract UserTest is Test {
         accessManager.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
         vm.stopPrank();
 
+        vm.prank(UPGRADE_ADMIN);
+        registerProxy.setGuessAndRevealDuration(3, 3);
+
         userV2Impl = new UserV2();
     }
 
@@ -125,6 +128,8 @@ contract UserTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Riddle.RiddleRegistered(address(user), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
 
+        uint256 currentBlockNumber = block.number;
+        console.log("Current block number", currentBlockNumber);
         Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 777);
         assertEq(1, registerProxy.totalRiddles());
         assertEq(USER, riddle.owner());
@@ -132,6 +137,8 @@ contract UserTest is Test {
         assertEq(1, riddle.id());
         assertEq(0, riddle.userIndex());
         assertEq(0, riddle.registerIndex());
+        assertEq(currentBlockNumber + 3, riddle.guessDeadline());
+        assertEq(currentBlockNumber + 6, riddle.revealDeadline());
     }
 
     function test_commit_RevertWhen_RiddleAlreadyRegistered() public {

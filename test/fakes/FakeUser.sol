@@ -56,6 +56,10 @@ contract FakeUser is IUser, Ownable, ERC165 {
         Register(registerAddress).removeMe();
     }
 
+    function register() external virtual override returns (Register) {
+        return Register(registerAddress);
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IUser).interfaceId || interfaceId == type(OwnableUpgradeable).interfaceId
             || super.supportsInterface(interfaceId);

@@ -92,16 +92,16 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         returns (Riddle riddle)
     {
         Utils.validateRiddle(statement);
-        Register register = Register(registerAddress);
-        AccessManagedBeaconHolder riddleBeaconHolder = register.riddleBeaconHolder();
+        Register reg = this.register();
+        AccessManagedBeaconHolder riddleBeaconHolder = reg.riddleBeaconHolder();
         BeaconProxy riddleBeaconProxy = new BeaconProxy(
             address(riddleBeaconHolder.beacon()),
             abi.encodeCall(
                 Riddle.initialize,
                 (
                     owner(),
-                    register.nextRiddleId(),
-                    register.totalRiddles(),
+                    reg.nextRiddleId(),
+                    reg.totalRiddles(),
                     uint32(riddles.length),
                     this,
                     statement,
@@ -111,7 +111,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         );
         riddle = Riddle(address(riddleBeaconProxy));
         riddles.push(riddle);
-        register.registerRiddle(riddle);
+        reg.registerRiddle(riddle);
         return riddle;
     }
 
@@ -151,7 +151,15 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      * @dev Remove this contract from Register (should be implemented with OnlyOwner modifier)
      */
     function remove() external virtual override onlyOwner {
-        Register(registerAddress).removeMe();
+        register().removeMe();
+    }
+
+    /**
+     * @dev Conversion of registerAddress to Register contract
+     * @return Register contract
+     */
+    function register() public virtual override returns (Register) {
+        return Register(registerAddress);
     }
 
     /**
