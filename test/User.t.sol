@@ -36,6 +36,9 @@ contract UserTest is Test {
 
     User private userV2Impl;
 
+    string private constant TYPICAL_RIDDLE_STATEMENT = "I am President";
+    string private constant USER_SECRET_KEY = "User's secret key";
+
     function setUp() public {
         vm.label(OWNER, "OWNER");
         vm.label(USER, "USER");
@@ -87,7 +90,7 @@ contract UserTest is Test {
 
         vm.prank(OWNER);
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, OWNER));
-        user.commit("I am President");
+        user.commit(TYPICAL_RIDDLE_STATEMENT, 777);
     }
 
     function test_RevertWhen_NotRegisterCalls() public {
@@ -104,7 +107,7 @@ contract UserTest is Test {
         User user = registerProxy.registerMeAs("user");
 
         vm.expectRevert(abi.encodeWithSelector(Utils.RiddleTooShort.selector, "I'm man", 7, 10));
-        user.commit("I'm man");
+        user.commit("I'm man", 777);
 
         string memory longString = string.concat(
             "12345678901234567890123456789012345678901234567890",
@@ -112,7 +115,7 @@ contract UserTest is Test {
             "12345678901234567890123456789012345678901234567890"
         );
         vm.expectRevert(abi.encodeWithSelector(Utils.RiddleTooLong.selector, longString, 150, 128));
-        user.commit(longString);
+        user.commit(longString, 777);
     }
 
     function test_commit_Successful() public {
@@ -120,12 +123,12 @@ contract UserTest is Test {
         assertEq(0, registerProxy.totalRiddles());
 
         vm.expectEmit(true, true, false, true);
-        emit Riddle.RiddleRegistered(address(user), 1, keccak256(abi.encode("I am President")));
+        emit Riddle.RiddleRegistered(address(user), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
 
-        Riddle riddle = user.commit("I am President");
+        Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 777);
         assertEq(1, registerProxy.totalRiddles());
         assertEq(USER, riddle.owner());
-        assertEq("I am President", riddle.statement());
+        assertEq(TYPICAL_RIDDLE_STATEMENT, riddle.statement());
         assertEq(1, riddle.id());
         assertEq(0, riddle.userIndex());
         assertEq(0, riddle.registerIndex());
@@ -137,12 +140,11 @@ contract UserTest is Test {
         User user2 = registerProxy.registerMeAs("user2");
         assertEq(0, registerProxy.totalRiddles());
 
-        string memory riddleStatement = "I am President";
-        user1.commit(riddleStatement);
+        user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
 
         vm.expectRevert(abi.encodeWithSelector(Riddle.RiddleAlreadyRegistered.selector, 1, "user1", 0));
         vm.prank(OWNER);
-        user2.commit(riddleStatement);
+        user2.commit(TYPICAL_RIDDLE_STATEMENT, 777);
 
         assertEq(1, registerProxy.totalRiddles());
     }

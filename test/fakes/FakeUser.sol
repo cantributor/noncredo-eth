@@ -33,8 +33,8 @@ contract FakeUser is IUser, Ownable, ERC165 {
         registerAddress = _registerAddress;
     }
 
-    function commit(string calldata statement) external virtual override returns (Riddle) {
-        console.log("Just to escape compiler warning about statement not used", statement);
+    function commit(string calldata statement, uint256 encryptedSolution) external virtual override returns (Riddle) {
+        console.log("Just to escape compiler warning about variables not used", statement, encryptedSolution);
         return Riddle(address(0));
     }
 

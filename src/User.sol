@@ -82,8 +82,15 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
     /**
      * @dev Commit new Riddle contract
      * @param statement Riddle statement
+     * @param encryptedSolution Encrypted solution
      */
-    function commit(string calldata statement) external virtual override onlyOwner returns (Riddle riddle) {
+    function commit(string calldata statement, uint256 encryptedSolution)
+        external
+        virtual
+        override
+        onlyOwner
+        returns (Riddle riddle)
+    {
         Utils.validateRiddle(statement);
         Register register = Register(registerAddress);
         AccessManagedBeaconHolder riddleBeaconHolder = register.riddleBeaconHolder();
@@ -91,7 +98,15 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
             address(riddleBeaconHolder.beacon()),
             abi.encodeCall(
                 Riddle.initialize,
-                (owner(), register.nextRiddleId(), register.totalRiddles(), uint32(riddles.length), this, statement)
+                (
+                    owner(),
+                    register.nextRiddleId(),
+                    register.totalRiddles(),
+                    uint32(riddles.length),
+                    this,
+                    statement,
+                    encryptedSolution
+                )
             )
         );
         riddle = Riddle(address(riddleBeaconProxy));

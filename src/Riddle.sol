@@ -18,6 +18,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     IUser public user;
 
     string public statement;
+    uint256 internal encryptedSolution;
 
     /**
      * @dev Riddle already registered
@@ -47,6 +48,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      * @param _userIndex Index at User
      * @param _user User contract
      * @param _statement Riddle statement
+     * @param _encryptedSolution Encrypted solution
      */
     function initialize(
         address initialOwner,
@@ -54,7 +56,8 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         uint32 _registerIndex,
         uint32 _userIndex,
         IUser _user,
-        string calldata _statement
+        string calldata _statement,
+        uint256 _encryptedSolution
     ) external initializer {
         __Ownable_init(initialOwner);
         id = _id;
@@ -62,5 +65,6 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         userIndex = _userIndex;
         user = _user;
         statement = _statement;
+        encryptedSolution = _encryptedSolution;
     }
 }

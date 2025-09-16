@@ -68,4 +68,13 @@ library Utils {
             revert RiddleTooShort(riddle, riddleBytes.length, MIN_RIDDLE_LENGTH);
         }
     }
+
+    function encryptSolution(string calldata riddleStatement, bool solution, string calldata userSecretKey)
+        external
+        pure
+        returns (uint256 encryptedSolution)
+    {
+        uint256 hash = uint256(keccak256(bytes(string.concat(riddleStatement, userSecretKey))));
+        return solution ? hash + 1 : hash;
+    }
 }
