@@ -73,6 +73,8 @@ contract UserTest is Test {
 
         assertEq(1, registerProxy.totalUsers());
         vm.prank(USER, USER);
+        vm.expectEmit(true, true, true, false);
+        emit User.UserRemoved(USER, "user", USER);
         user.remove();
 
         assertEq(0, registerProxy.totalUsers());

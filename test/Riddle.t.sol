@@ -96,6 +96,8 @@ contract RiddleTest is Test {
         vm.deal(OWNER, 2000);
         assertEq(2000, OWNER.balance);
         registerProxy.registerMeAs("guessing");
+        vm.expectEmit(true, true, false, true);
+        emit Riddle.RiddleGuessRegistered(address(riddle), OWNER, 1, true, 1000);
         Guess memory guess = riddle.guess{value: 1000}(true);
         assertEq(1000, OWNER.balance);
         vm.stopPrank();
@@ -104,6 +106,9 @@ contract RiddleTest is Test {
         assertEq(true, guess.credo);
         assertEq(1000, guess.bet);
         assertEq(1000, address(riddle).balance);
+
+        Guess memory foundGuess = riddle.guessOf(OWNER);
+        assertEq(1000, foundGuess.bet);
     }
 
     function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {

@@ -12,7 +12,6 @@ import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
  * @dev User interface
  */
 interface IUser {
-    function commit(string calldata statement, uint256 encryptedSolution) external returns (Riddle);
     function totalRiddles() external view returns (uint32);
     function nickString() external view returns (string memory);
     function nick() external view returns (ShortString);
@@ -21,4 +20,5 @@ interface IUser {
     function goodbye() external;
     function remove() external;
     function register() external returns (Register);
+    function commit(string calldata statement, uint256 encryptedSolution) external returns (Riddle);
 }
