@@ -181,15 +181,17 @@ contract RegisterTest is Test {
         util_RegisterAccount(USER, "user2");
     }
 
-    function test_emit_UserRegistered() public {
+    function test_registerMeAs_Successful() public {
         vm.expectEmit(true, true, false, false);
-
         emit User.UserRegistered(address(USER), "user");
 
-        User user = util_RegisterAccount(USER, "user");
+        User user = registerProxy.registerMeAs("user");
 
         assertEq("user", user.nickString());
         assertEq(0, user.index());
+        assertEq(USER, user.owner());
+        assertEq(address(registerProxy), address(user.register()));
+        assertEq(address(user), address(registerProxy.users(0)));
     }
 
     function test_RevertWhen_TryingToReinitializeUser() public {
@@ -295,7 +297,7 @@ contract RegisterTest is Test {
         assertEq(0, user.index());
     }
 
-    function test_Upgrade_Register_RevertWhen_DirectUpgrade() public {
+    function test_Upgrade_RevertWhen_DirectUpgrade() public {
         vm.expectRevert(abi.encodeWithSelector(UUPSUpgradeable.UUPSUnauthorizedCallContext.selector));
         registerImpl.upgradeToAndCall(
             address(registerV2),
@@ -303,7 +305,7 @@ contract RegisterTest is Test {
         );
     }
 
-    function test_Upgrade_Register_Successful() public {
+    function test_Upgrade_Successful() public {
         util_RegisterAccount(USER, "user");
         assertEq(util_getTotalUsers(), 1);
 

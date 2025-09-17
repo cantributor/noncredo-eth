@@ -25,7 +25,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
     uint32 public index;
     address internal registerAddress;
 
-    Riddle[] internal riddles;
+    Riddle[] public riddles;
 
     /**
      * @dev Trying to call some function that should be called only by Register contract

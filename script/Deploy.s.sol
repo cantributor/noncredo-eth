@@ -128,13 +128,19 @@ contract DeployScript is Script {
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE);
 
-        bytes4[] memory userBeaconUpgradeToSelector = new bytes4[](1);
-        userBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
-        accessMgr.setTargetFunctionRole(userBeaconHolderAddr, userBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE);
+        if (userBeaconHolderAddr != address(0)) {
+            bytes4[] memory userBeaconUpgradeToSelector = new bytes4[](1);
+            userBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
+            accessMgr.setTargetFunctionRole(userBeaconHolderAddr, userBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE);
+        }
 
-        bytes4[] memory riddleBeaconUpgradeToSelector = new bytes4[](1);
-        riddleBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
-        accessMgr.setTargetFunctionRole(riddleBeaconHolderAddr, riddleBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE);
+        if (riddleBeaconHolderAddr != address(0)) {
+            bytes4[] memory riddleBeaconUpgradeToSelector = new bytes4[](1);
+            riddleBeaconUpgradeToSelector[0] = bytes4(keccak256("upgradeTo(address)"));
+            accessMgr.setTargetFunctionRole(
+                riddleBeaconHolderAddr, riddleBeaconUpgradeToSelector, Roles.UPGRADE_ADMIN_ROLE
+            );
+        }
 
         if (userForPrank != address(0)) {
             vm.stopPrank();

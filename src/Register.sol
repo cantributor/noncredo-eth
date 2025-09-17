@@ -34,7 +34,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     mapping(address account => User user) internal userByAccount;
     mapping(ShortString nick => User user) internal userByNick;
 
-    User[] internal users;
+    User[] public users;
 
     AccessManagedBeaconHolder public userBeaconHolder;
     AccessManagedBeaconHolder public riddleBeaconHolder;
@@ -42,7 +42,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     uint32 public riddleCounter = 0;
     uint16 public guessDurationBlocks = 3 * 24 * 60 * (60 / 12); // 3 days * 24 hours * 60 minutes (12 seconds per block)
     uint16 public revealDurationBlocks = 24 * 60 * (60 / 12); // 24 hours * 60 minutes (12 seconds per block)
-    Riddle[] internal riddles;
+    Riddle[] public riddles;
     mapping(bytes32 statementHash => Riddle) internal riddleByStatement;
 
     /**
@@ -267,7 +267,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         riddles.push(riddle);
         riddleByStatement[statementHash] = riddle;
-        emit Riddle.RiddleRegistered(address(riddle.user()), riddle.id(), statementHash);
+        emit Riddle.RiddleRegistered(address(riddle.user()), address(riddle), riddle.id(), statementHash);
     }
 
     /**

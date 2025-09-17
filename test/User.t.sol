@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {Test, console} from "forge-std/Test.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
-import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
@@ -17,17 +16,12 @@ import {DeployScript} from "../script/Deploy.s.sol";
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
-import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract UserTest is Test {
     IAccessManager private accessManager;
     Register private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
-    AccessManagedBeaconHolder private riddleBeaconHolder;
 
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
@@ -46,9 +40,9 @@ contract UserTest is Test {
         vm.label(USER_ADMIN, "USER_ADMIN");
 
         DeployScript deployScript = new DeployScript();
-        (accessManager,,, registerProxy, userBeaconHolder, riddleBeaconHolder) = deployScript.createContracts(OWNER);
+        (accessManager,,, registerProxy, userBeaconHolder,) = deployScript.createContracts(OWNER);
         deployScript.grantAccessToRoles(
-            OWNER, accessManager, address(registerProxy), address(userBeaconHolder), address(riddleBeaconHolder)
+            OWNER, accessManager, address(registerProxy), address(userBeaconHolder), address(0)
         );
 
         vm.startPrank(OWNER);
@@ -122,23 +116,39 @@ contract UserTest is Test {
     }
 
     function test_commit_Successful() public {
-        User user = registerProxy.registerMeAs("user");
+        User user1 = registerProxy.registerMeAs("user1");
         assertEq(0, registerProxy.totalRiddles());
 
-        vm.expectEmit(true, true, false, true);
-        emit Riddle.RiddleRegistered(address(user), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
+        vm.expectEmit(true, false, false, true);
+        emit Riddle.RiddleRegistered(address(user1), address(0), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
 
         uint256 currentBlockNumber = block.number;
         console.log("Current block number", currentBlockNumber);
-        Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 777);
+        Riddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
         assertEq(1, registerProxy.totalRiddles());
-        assertEq(USER, riddle.owner());
-        assertEq(TYPICAL_RIDDLE_STATEMENT, riddle.statement());
-        assertEq(1, riddle.id());
-        assertEq(0, riddle.userIndex());
-        assertEq(0, riddle.registerIndex());
-        assertEq(currentBlockNumber + 3, riddle.guessDeadline());
-        assertEq(currentBlockNumber + 6, riddle.revealDeadline());
+        assertEq(USER, riddle1.owner());
+        assertEq(TYPICAL_RIDDLE_STATEMENT, riddle1.statement());
+        assertEq(1, riddle1.id());
+        assertEq(0, riddle1.userIndex());
+        assertEq(0, riddle1.registerIndex());
+        assertEq(currentBlockNumber + 3, riddle1.guessDeadline());
+        assertEq(currentBlockNumber + 6, riddle1.revealDeadline());
+
+        vm.startPrank(OWNER);
+        User user2 = registerProxy.registerMeAs("user2");
+        Riddle riddle2 = user2.commit("I am Superman", 777);
+        vm.stopPrank();
+
+        assertEq(2, registerProxy.totalRiddles());
+        assertEq(OWNER, riddle2.owner());
+        assertEq(2, riddle2.id());
+        assertEq(0, riddle2.userIndex());
+        assertEq(1, riddle2.registerIndex());
+
+        assertEq(address(riddle1), address(user1.riddles(0)));
+        assertEq(address(riddle2), address(user2.riddles(0)));
+        assertEq(address(riddle1), address(registerProxy.riddles(0)));
+        assertEq(address(riddle2), address(registerProxy.riddles(1)));
     }
 
     function test_commit_RevertWhen_RiddleAlreadyRegistered() public {
@@ -156,14 +166,12 @@ contract UserTest is Test {
         assertEq(1, registerProxy.totalRiddles());
     }
 
-    function test_Upgrade_User_RevertWhen_CallerIsNotAuthorized() public {
+    function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER));
         userBeaconHolder.upgradeTo(address(userV2Impl));
     }
 
-    function test_Upgrade_User_Successful() public {
-        console.log(string.concat("abc", "123"));
-
+    function test_Upgrade_Successful() public {
         registerProxy.registerMeAs("user");
         User user = registerProxy.userOf("user");
         assertEq("user", user.nickString());
