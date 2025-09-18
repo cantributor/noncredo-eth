@@ -42,6 +42,7 @@ contract RegisterTest is Test {
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
     address private constant USER_ADMIN = address(0xB);
+    address private constant FINANCE_ADMIN = address(0xC);
     address private constant BAD_GUY = address(0xC);
     address private immutable USER = address(this);
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
@@ -66,6 +67,7 @@ contract RegisterTest is Test {
         vm.startPrank(OWNER);
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
         accessManager.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
+        accessManager.grantRole(Roles.FINANCE_ADMIN_ROLE, FINANCE_ADMIN, 0);
         vm.stopPrank();
 
         registerV2 = new RegisterV2(address(erc2771Forwarder));
@@ -84,6 +86,9 @@ contract RegisterTest is Test {
 
         vm.expectRevert(encodedUnauthorized);
         registerProxy.setGuessAndRevealDuration(1, 1);
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.setRegisterAndRiddlingRewards(0, 0);
     }
 
     function test_RevertWhen_NickTooShortOrTooLong() public {
@@ -201,7 +206,7 @@ contract RegisterTest is Test {
         User user = util_ResultAsUser(success, result);
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
-        user.initialize(USER, ShortStrings.toShortString("hacker"), 666, address(registerImpl));
+        user.initialize(USER, ShortStrings.toShortString("hacker"), 666, payable(registerImpl));
     }
 
     function test_removeUser() public {
@@ -260,7 +265,7 @@ contract RegisterTest is Test {
         assertEq(1, registerProxy.totalUsers());
 
         vm.startPrank(BAD_GUY, BAD_GUY);
-        FakeUser fakeUser = new FakeUser(user.owner(), user.nick(), user.index(), address(registerProxy));
+        FakeUser fakeUser = new FakeUser(user.owner(), user.nick(), user.index(), payable(registerProxy));
         console.log("Fake user owner:", fakeUser.owner());
 
         vm.expectRevert(

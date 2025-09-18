@@ -23,7 +23,7 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract User is IUser, OwnableUpgradeable, ERC165 {
     ShortString public nick;
     uint32 public index;
-    address internal registerAddress;
+    address payable internal registerAddress;
 
     Riddle[] public riddles;
 
@@ -59,7 +59,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      * @param _index User index initialization
      * @param _registerAddress Register.sol contract address
      */
-    function initialize(address initialOwner, ShortString _nick, uint32 _index, address _registerAddress)
+    function initialize(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
         external
         initializer
     {
@@ -109,7 +109,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
                 )
             )
         );
-        riddle = Riddle(address(riddleBeaconProxy));
+        riddle = Riddle(payable(riddleBeaconProxy));
         riddles.push(riddle);
         reg.registerRiddle(riddle);
         return riddle;

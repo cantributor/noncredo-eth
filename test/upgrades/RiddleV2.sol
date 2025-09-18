@@ -2,7 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {Guess} from "src/Guess.sol";
+import {Guess} from "src/structs/Guess.sol";
 import {Riddle} from "src/Riddle.sol";
 
 contract RiddleV2 is Riddle {

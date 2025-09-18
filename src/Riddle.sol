@@ -2,10 +2,11 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {Guess} from "./Guess.sol";
+import {Guess} from "./structs/Guess.sol";
 import {Register} from "./Register.sol";
 import {IRiddle} from "./interfaces/IRiddle.sol";
 import {IUser} from "./interfaces/IUser.sol";
+import {Utils} from "./Utils.sol";
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -15,7 +16,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
  */
 contract Riddle is IRiddle, OwnableUpgradeable {
     string public statement;
-    uint256 internal encryptedSolution;
+    uint256 public encryptedSolution;
 
     uint32 public id;
     uint32 public registerIndex;
@@ -69,6 +70,23 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     error RiddleAlreadyRevealed(uint32 riddleId, address riddleAddress, address msgSender);
 
     /**
+     * @dev Guess period not finished yet (revelation too early)
+     * @param riddleId Riddle id
+     * @param blockNumber Current block number
+     * @param guessDeadline Guess deadline (when revelation will be possible)
+     */
+    error GuessPeriodNotFinished(uint32 riddleId, uint256 blockNumber, uint256 guessDeadline);
+
+    /**
+     * @dev Reward error
+     * @param riddleAddress Riddle contract address
+     * @param riddleId Riddle id
+     * @param rewardAddress Address of guessing account
+     * @param rewardValue Value of reward
+     */
+    error RewardError(address riddleAddress, uint32 riddleId, address rewardAddress, uint256 rewardValue);
+
+    /**
      * @dev Riddle successfully registered
      * @param userAddress User contract address
      * @param riddleAddress Riddle contract address
@@ -87,9 +105,17 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      * @param credo Guess credo/noncredo
      * @param bet Placed bet value
      */
-    event RiddleGuessRegistered(
+    event GuessRegistered(
         address indexed riddleAddress, address indexed guessSender, uint32 id, bool credo, uint256 bet
     );
+
+    /**
+     * @dev Riddle reward payed
+     * @param riddleAddress Riddle contract address
+     * @param beneficiaryAddress Beneficiary address
+     * @param amount Payed amount
+     */
+    event RewardPayed(address indexed riddleAddress, address indexed beneficiaryAddress, uint256 amount);
 
     constructor() {
         _disableInitializers();
@@ -151,7 +177,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         }
         _guess = Guess(msgSender, credo, msg.value);
         guesses.push(_guess);
-        emit RiddleGuessRegistered(address(this), msgSender, id, credo, msg.value);
+        emit GuessRegistered(address(this), msgSender, id, credo, msg.value);
         return _guess;
     }
 
@@ -169,5 +195,81 @@ contract Riddle is IRiddle, OwnableUpgradeable {
             }
         }
         return _guess;
+    }
+
+    /**
+     * @dev Reveal solution of the riddle
+     * @param userSecretKey User secret key
+     * @return solution Is the riddle statement true? (riddle author's point of view)
+     */
+    function reveal(string calldata userSecretKey) external override onlyOwner returns (bool solution) {
+        address msgSender = _msgSender();
+        if (revealed) {
+            revert RiddleAlreadyRevealed(id, address(this), msgSender);
+        }
+        if (block.number <= guessDeadline) {
+            revert GuessPeriodNotFinished(id, block.number, guessDeadline);
+        }
+        solution = Utils.decryptSolution(this, userSecretKey);
+        if (address(this).balance > 0) {
+            shareReward(solution);
+        }
+        revealed = true;
+        return solution;
+    }
+
+    /**
+     * @dev Share the riddle reward amongst players
+     * @param solution Riddle solution (true/false)
+     */
+    function shareReward(bool solution) internal {
+        Register register = user.register();
+        uint256 winnerBetsSum = 0;
+        uint256 prize = 0;
+        for (uint32 i = 0; i < guesses.length; i++) {
+            if (guesses[i].credo == solution) winnerBetsSum += guesses[i].bet;
+            else prize += guesses[i].bet;
+        }
+        uint256 registerReward = prize * register.registerRewardPercent() / 100;
+        uint256 riddlingReward = prize * register.riddlingRewardPercent() / 100;
+        uint256 guessingReward = address(this).balance - registerReward - riddlingReward;
+        if (winnerBetsSum > 0) {
+            for (uint32 i = 0; i < guesses.length; i++) {
+                if (guesses[i].credo == solution) {
+                    if (guesses[i].bet > 0) {
+                        uint256 thisAccountReward = guesses[i].bet * guessingReward / winnerBetsSum;
+                        payReward(guesses[i].account, thisAccountReward);
+                    }
+                }
+            }
+        }
+        if (riddlingReward > 0) {
+            payReward(owner(), riddlingReward);
+        }
+        uint256 remainder = address(this).balance;
+        if (remainder > 0) {
+            payReward(payable(register), remainder);
+        }
+    }
+
+    /**
+     * @dev Pay reward
+     * @param beneficiary Beneficiary address
+     * @param amount Reward amount
+     */
+    function payReward(address beneficiary, uint256 amount) internal {
+        (bool success,) = beneficiary.call{value: amount}("");
+        if (success) {
+            emit RewardPayed(payable(this), beneficiary, amount);
+        } else {
+            revert RewardError(payable(this), id, beneficiary, amount);
+        }
+    }
+
+    /**
+     * @dev Receive is equivalent to guess() with pseudorandom "credo" param
+     */
+    receive() external payable override {
+        this.guess(block.number % 2 == 1);
     }
 }

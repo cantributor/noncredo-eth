@@ -23,9 +23,9 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract FakeUser is IUser, Ownable, ERC165 {
     ShortString public nick;
     uint32 public index;
-    address internal registerAddress;
+    address payable internal registerAddress;
 
-    constructor(address initialOwner, ShortString _nick, uint32 _index, address _registerAddress)
+    constructor(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
         Ownable(initialOwner)
     {
         nick = _nick;
@@ -35,7 +35,7 @@ contract FakeUser is IUser, Ownable, ERC165 {
 
     function commit(string calldata statement, uint256 encryptedSolution) external virtual override returns (Riddle) {
         console.log("Just to escape compiler warning about variables not used", statement, encryptedSolution);
-        return Riddle(address(0));
+        return Riddle(payable(0));
     }
 
     function totalRiddles() external view virtual override returns (uint32) {

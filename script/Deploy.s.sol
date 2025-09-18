@@ -89,7 +89,7 @@ contract DeployScript is Script {
                 )
             )
         );
-        resultRegisterProxy = Register(address(registerProxyAddress));
+        resultRegisterProxy = Register(payable(registerProxyAddress));
         console.log("Beacon holder address for User contract: ", address(resultAccessManagedUserBeaconHolder));
         console.log("Beacon holder address for Riddle contract: ", address(resultAccessManagedRiddleBeaconHolder));
         console.log("Register implementation address: ", address(resultRegisterImpl));
@@ -121,8 +121,14 @@ contract DeployScript is Script {
         accessMgr.setTargetFunctionRole(registerProxyAddr, removeSelector, Roles.USER_ADMIN_ROLE);
 
         bytes4[] memory setGuessAndRevealDurationSelector = new bytes4[](1);
-        setGuessAndRevealDurationSelector[0] = bytes4(keccak256("setGuessAndRevealDuration(uint16,uint16)"));
-        accessMgr.setTargetFunctionRole(registerProxyAddr, setGuessAndRevealDurationSelector, Roles.UPGRADE_ADMIN_ROLE);
+        setGuessAndRevealDurationSelector[0] = bytes4(keccak256("setGuessAndRevealDuration(uint32,uint32)"));
+        accessMgr.setTargetFunctionRole(registerProxyAddr, setGuessAndRevealDurationSelector, Roles.FINANCE_ADMIN_ROLE);
+
+        bytes4[] memory setRegisterAndRiddlingRewardsSelector = new bytes4[](1);
+        setRegisterAndRiddlingRewardsSelector[0] = bytes4(keccak256("setRegisterAndRiddlingRewards(uint8,uint8)"));
+        accessMgr.setTargetFunctionRole(
+            registerProxyAddr, setRegisterAndRiddlingRewardsSelector, Roles.FINANCE_ADMIN_ROLE
+        );
 
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));

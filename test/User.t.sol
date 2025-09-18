@@ -8,6 +8,7 @@ import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {User} from "src/User.sol";
+
 import {Utils} from "src/Utils.sol";
 
 import {UserV2} from "./upgrades/UserV2.sol";
@@ -26,6 +27,7 @@ contract UserTest is Test {
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
     address private constant USER_ADMIN = address(0xB);
+    address private constant FINANCE_ADMIN = address(0xC);
     address private immutable USER = address(this);
 
     User private userV2Impl;
@@ -38,6 +40,7 @@ contract UserTest is Test {
         vm.label(USER, "USER");
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
         vm.label(USER_ADMIN, "USER_ADMIN");
+        vm.label(FINANCE_ADMIN, "FINANCE_ADMIN");
 
         DeployScript deployScript = new DeployScript();
         (accessManager,,, registerProxy, userBeaconHolder,) = deployScript.createContracts(OWNER);
@@ -48,10 +51,11 @@ contract UserTest is Test {
         vm.startPrank(OWNER);
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
         accessManager.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
+        accessManager.grantRole(Roles.FINANCE_ADMIN_ROLE, FINANCE_ADMIN, 0);
         vm.stopPrank();
 
-        vm.prank(UPGRADE_ADMIN);
-        registerProxy.setGuessAndRevealDuration(3, 3);
+        vm.prank(FINANCE_ADMIN);
+        registerProxy.setGuessAndRevealDuration(Utils.MIN_DURATION, Utils.MIN_DURATION);
 
         userV2Impl = new UserV2();
     }
@@ -133,8 +137,8 @@ contract UserTest is Test {
         assertEq(1, riddle1.id());
         assertEq(0, riddle1.userIndex());
         assertEq(0, riddle1.registerIndex());
-        assertEq(currentBlockNumber + 3, riddle1.guessDeadline());
-        assertEq(currentBlockNumber + 6, riddle1.revealDeadline());
+        assertEq(currentBlockNumber + Utils.MIN_DURATION, riddle1.guessDeadline());
+        assertEq(currentBlockNumber + Utils.MIN_DURATION * 2, riddle1.revealDeadline());
 
         vm.startPrank(OWNER);
         User user2 = registerProxy.registerMeAs("user2");

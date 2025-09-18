@@ -3,6 +3,8 @@
 pragma solidity 0.8.28;
 
 import {IUser} from "./interfaces/IUser.sol";
+import {Payment} from "./structs/Payment.sol";
+
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 import {Riddle} from "./Riddle.sol";
 import {Roles} from "./Roles.sol";
@@ -40,10 +42,17 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     AccessManagedBeaconHolder public riddleBeaconHolder;
 
     uint32 public riddleCounter = 0;
-    uint16 public guessDurationBlocks = 3 * 24 * 60 * (60 / 12); // 3 days * 24 hours * 60 minutes (12 seconds per block)
-    uint16 public revealDurationBlocks = 24 * 60 * (60 / 12); // 24 hours * 60 minutes (12 seconds per block)
+
+    uint32 public guessDurationBlocks = 3 * 24 * 60 * (60 / 12); // 3 days * 24 hours * 60 min (12 seconds per block)
+    uint32 public revealDurationBlocks = 24 * 60 * (60 / 12); // 24 hours * 60 min (12 seconds per block)
+
+    uint8 public registerRewardPercent = 1;
+    uint8 public riddlingRewardPercent = 10;
+
     Riddle[] public riddles;
     mapping(bytes32 statementHash => Riddle) internal riddleByStatement;
+
+    Payment[] internal payments;
 
     /**
      * @dev Trying to get unregistered account
@@ -152,7 +161,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
             address(userBeaconHolder.beacon()),
-            abi.encodeCall(User.initialize, (msgSender, nickShortString, uint32(users.length), address(this)))
+            abi.encodeCall(User.initialize, (msgSender, nickShortString, uint32(users.length), payable(this)))
         );
         user = User(address(userBeaconProxy));
         userByNick[nickShortString] = user;
@@ -271,17 +280,34 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Set guess duration (in blocks)
-     * @param _guessDurationBlocks New guess duration value
-     * @param _revealDurationBlocks New reveal duration value
+     * @dev Set guess & reveal duration (in blocks)
+     * @param _guessDuration New guess duration value
+     * @param _revealDuration New reveal duration value
      */
-    function setGuessAndRevealDuration(uint16 _guessDurationBlocks, uint16 _revealDurationBlocks)
-        external
-        virtual
-        restricted
-    {
-        guessDurationBlocks = _guessDurationBlocks;
-        revealDurationBlocks = _revealDurationBlocks;
+    function setGuessAndRevealDuration(uint32 _guessDuration, uint32 _revealDuration) external virtual restricted {
+        Utils.validateDurations(_guessDuration, _revealDuration);
+        guessDurationBlocks = _guessDuration;
+        revealDurationBlocks = _revealDuration;
+    }
+
+    /**
+     * @dev Set register & riddling rewards (in percents)
+     * @param _registerReward New register reward percent value
+     * @param _riddlingReward New riddling reward percent value
+     */
+    function setRegisterAndRiddlingRewards(uint8 _registerReward, uint8 _riddlingReward) external virtual restricted {
+        Utils.validatePercent(_registerReward);
+        Utils.validatePercent(_riddlingReward);
+        registerRewardPercent = _registerReward;
+        riddlingRewardPercent = _riddlingReward;
+    }
+
+    /**
+     * @dev Get payments array
+     * @return payments array
+     */
+    function paymentsArray() external view virtual returns (Payment[] memory) {
+        return payments;
     }
 
     /**
@@ -339,5 +365,12 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         } else {
             return false;
         }
+    }
+
+    /**
+     * @dev Receive payment
+     */
+    receive() external payable {
+        payments.push(Payment(_msgSender(), msg.value));
     }
 }

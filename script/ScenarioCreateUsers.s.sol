@@ -14,7 +14,7 @@ contract ScenarioCreateUsers is Script {
     function setUp() public {}
 
     function run(
-        address registerProxyAddress,
+        address payable registerProxyAddress,
         uint256 ownerPrivateKey,
         uint256 user1PrivateKey,
         uint256 user2PrivateKey
