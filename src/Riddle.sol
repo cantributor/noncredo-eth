@@ -117,6 +117,17 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      */
     event RewardPayed(address indexed riddleAddress, address indexed beneficiaryAddress, uint256 amount);
 
+    /**
+     * @dev Sponsor payment received
+     * @param riddleAddress Riddle contract address
+     * @param paymentSender Payment sender address
+     * @param id Riddle id
+     * @param amount Payment amount
+     */
+    event SponsorPaymentReceived(
+        address indexed riddleAddress, address indexed paymentSender, uint32 id, uint256 amount
+    );
+
     constructor() {
         _disableInitializers();
     }
@@ -225,11 +236,10 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     function shareReward(bool solution) internal {
         Register register = user.register();
         uint256 winnerBetsSum = 0;
-        uint256 prize = 0;
         for (uint32 i = 0; i < guesses.length; i++) {
             if (guesses[i].credo == solution) winnerBetsSum += guesses[i].bet;
-            else prize += guesses[i].bet;
         }
+        uint256 prize = address(this).balance - winnerBetsSum;
         uint256 registerReward = prize * register.registerRewardPercent() / 100;
         uint256 riddlingReward = prize * register.riddlingRewardPercent() / 100;
         uint256 guessingReward = address(this).balance - registerReward - riddlingReward;
@@ -267,9 +277,9 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     }
 
     /**
-     * @dev Receive is equivalent to guess() with pseudorandom "credo" param
+     * @dev To receive sponsor payments (no guess)
      */
     receive() external payable override {
-        this.guess(block.number % 2 == 1);
+        emit SponsorPaymentReceived(address(this), _msgSender(), id, msg.value);
     }
 }

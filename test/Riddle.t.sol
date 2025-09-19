@@ -93,6 +93,7 @@ contract RiddleTest is Test {
         vm.deal(GUESSING_1, 1000);
         vm.deal(GUESSING_2, 2000);
         vm.deal(GUESSING_3, 1000);
+        vm.deal(GUESSING_NOT_REGISTERED, 1000);
     }
 
     function test_guess_RevertWhen_AccountNotRegistered() public {
@@ -188,6 +189,19 @@ contract RiddleTest is Test {
         assertEq(0, payable(registerProxy).balance);
     }
 
+    function test_reveal_Successful_NoGuessesWithSponsorPayment() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        (bool success,) = address(riddle).call{value: 1000}("");
+        assertTrue(success);
+
+        vm.roll(riddle.guessDeadline() + 1);
+        vm.prank(RIDDLING);
+        riddle.reveal(USER_SECRET_KEY);
+        assertEq(0, payable(riddle).balance);
+        assertEq(90, RIDDLING.balance);
+        assertEq(910, payable(registerProxy).balance);
+    }
+
     function test_reveal_Successful_IncorrectGuess() public {
         Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
 
@@ -227,6 +241,23 @@ contract RiddleTest is Test {
         assertEq(0, payable(registerProxy).balance);
         assertEq(0, RIDDLING.balance);
         assertEq(1000, GUESSING_1.balance);
+    }
+
+    function test_reveal_Successful_CorrectGuessWithSponsorPayment() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        (bool success,) = address(riddle).call{value: 1000}("");
+        assertTrue(success);
+
+        vm.prank(GUESSING_1);
+        riddle.guess{value: 1000}(true);
+
+        vm.roll(riddle.guessDeadline() + 1);
+        vm.prank(RIDDLING);
+        riddle.reveal(USER_SECRET_KEY);
+        assertEq(0, payable(riddle).balance);
+        assertEq(10, payable(registerProxy).balance);
+        assertEq(90, RIDDLING.balance);
+        assertEq(1900, GUESSING_1.balance);
     }
 
     function test_reveal_Successful_CorrectAndIncorrectGuesses() public {
@@ -271,6 +302,18 @@ contract RiddleTest is Test {
 
         Guess memory guessByNewRiddleVersion = riddle.guessOf(RIDDLING);
         assertEq(RIDDLING, guessByNewRiddleVersion.account);
+    }
+
+    function test_receive_Successful() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        assertEq(0, address(riddle).balance);
+
+        vm.expectEmit(true, true, false, true);
+        emit Riddle.SponsorPaymentReceived(address(riddle), address(this), 1, 1000);
+        (bool success,) = address(riddle).call{value: 1000}("");
+
+        assertTrue(success);
+        assertEq(1000, address(riddle).balance);
     }
 
     function util_CreateRiddle(string memory statement, bool solution, string memory userSecretKey)
