@@ -1,9 +1,10 @@
 source ../.env
-echo totalUsers $(cast call $ANVIL_USER_REGISTER_PROXY_ADDRESS "totalUsers()(uint32)" --rpc-url $ANVIL_RPC_URL)
-echo allNicks $(cast call $ANVIL_USER_REGISTER_PROXY_ADDRESS "allNicks()(string[])" --rpc-url $ANVIL_RPC_URL)
-
-#echo registerMeAs user1
-#cast send $USER_REGISTER_PROXY_ADDRESS "registerMeAs(string)(address)" --rpc-url $RPC_URL --private-key $OWNER_PRIVATE_KEY user1
-#
-#echo getTotalUsers $(cast call $USER_REGISTER_PROXY_ADDRESS "getTotalUsers()(uint256)" --rpc-url $RPC_URL)
-#echo getAllNicks $(cast call $USER_REGISTER_PROXY_ADDRESS "getAllNicks()(string[])" --rpc-url $RPC_URL)
+echo totalUsers $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "totalUsers()(uint32)" --rpc-url $ANVIL_RPC_URL)
+echo allNicks $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "allNicks()(string[])" --rpc-url $ANVIL_RPC_URL)
+echo userOf\(\"owner\"\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" owner --rpc-url $ANVIL_RPC_URL)
+echo userOf\(\"user1\"\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" user1 --rpc-url $ANVIL_RPC_URL)
+echo userOf\(\"user2\"\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" user2 --rpc-url $ANVIL_RPC_URL)
+echo totalRiddles $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "totalRiddles()(uint32)" --rpc-url $ANVIL_RPC_URL)
+echo owner balance: $(cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
+echo user1 balance: $(cast balance 0x70997970C51812dc3A010C7d01b50e0d17dc79C8)
+echo user2 balance: $(cast balance 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC)

@@ -27,8 +27,6 @@ contract DeployScript is Script {
     function setUp() public {}
 
     function run() public {
-        console.log("Message sender:", msg.sender);
-
         vm.startBroadcast();
 
         (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder, riddleBeaconHolder) =

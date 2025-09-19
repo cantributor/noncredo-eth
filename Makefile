@@ -18,16 +18,23 @@ anvil-create-users: build
 	forge script script/ScenarioCreateUsers.s.sol:ScenarioCreateUsers --rpc-url anvil --broadcast -v \
       --private-key ${ANVIL_OWNER_PRIVATE_KEY} \
       --sig "run(address,uint256,uint256,uint256)" \
-      ${ANVIL_USER_REGISTER_PROXY_ADDRESS} \
+      ${ANVIL_REGISTER_PROXY_ADDRESS} \
       ${ANVIL_OWNER_PRIVATE_KEY} \
       ${ANVIL_USER1_PRIVATE_KEY} \
       ${ANVIL_USER2_PRIVATE_KEY}
+
+anvil-commit: build
+	forge script script/ScenarioUserCommit.s.sol:ScenarioUserCommit --rpc-url anvil --broadcast -v \
+      --private-key ${ANVIL_OWNER_PRIVATE_KEY} \
+      --sig "run(address,uint256)" \
+      ${ANVIL_REGISTER_PROXY_ADDRESS} \
+      ${ANVIL_OWNER_PRIVATE_KEY}
 
 sepolia-create-users: build
 	forge script script/ScenarioCreateUsers.s.sol:ScenarioCreateUsers --rpc-url sepolia --broadcast -v \
       --private-key ${ANVIL_OWNER_PRIVATE_KEY} \
       --sig "run(address,uint256,uint256,uint256)" \
-      ${SEPOLIA_USER_REGISTER_PROXY_ADDRESS} \
+      ${SEPOLIA_REGISTER_PROXY_ADDRESS} \
       ${SOLIDITY_STUDENT_PRIVATE_KEY} \
       ${SOLIDITY_STUDENT_2_PRIVATE_KEY} \
       ${SOLIDITY_STUDENT_3_PRIVATE_KEY}

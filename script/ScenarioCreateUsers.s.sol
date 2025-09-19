@@ -20,7 +20,6 @@ contract ScenarioCreateUsers is Script {
         uint256 user2PrivateKey
     ) public {
         registerProxy = Register(registerProxyAddress);
-        console.log("Message sender:", msg.sender);
 
         vm.broadcast(ownerPrivateKey);
         registerProxy.registerMeAs("owner");
