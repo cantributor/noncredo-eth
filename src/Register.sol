@@ -41,13 +41,13 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     AccessManagedBeaconHolder public userBeaconHolder;
     AccessManagedBeaconHolder public riddleBeaconHolder;
 
-    uint32 public riddleCounter = 0;
+    uint32 public riddleCounter;
 
-    uint32 public guessDurationBlocks = 3 * 24 * 60 * (60 / 12); // 3 days * 24 hours * 60 min (12 seconds per block)
-    uint32 public revealDurationBlocks = 24 * 60 * (60 / 12); // 24 hours * 60 min (12 seconds per block)
+    uint32 public guessDurationBlocks;
+    uint32 public revealDurationBlocks;
 
-    uint8 public registerRewardPercent = 1;
-    uint8 public riddlingRewardPercent = 10;
+    uint8 public registerRewardPercent;
+    uint8 public riddlingRewardPercent;
 
     Riddle[] public riddles;
     mapping(bytes32 statementHash => Riddle) internal riddleByStatement;
@@ -102,6 +102,10 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         __UUPSUpgradeable_init();
         userBeaconHolder = _userBeaconHolder;
         riddleBeaconHolder = _riddleBeaconHolder;
+        guessDurationBlocks = 3 * 24 * 60 * 60 / 12; // 3 days * 24 hours * 60 minutes * 60 seconds / 12 sec per block
+        revealDurationBlocks = 24 * 60 * 60 / 12; // 24 hours * 60 minutes * 60 seconds / 12 sec per block
+        registerRewardPercent = 1;
+        riddlingRewardPercent = 10;
     }
 
     /**

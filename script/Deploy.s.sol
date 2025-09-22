@@ -38,6 +38,7 @@ contract DeployScript is Script {
 
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, msg.sender, 0);
         accessManager.grantRole(Roles.USER_ADMIN_ROLE, msg.sender, 0);
+        accessManager.grantRole(Roles.FINANCE_ADMIN_ROLE, msg.sender, 0);
         console.log("UPGRADE_ADMIN_ROLE & USER_ADMIN_ROLE granted to:", msg.sender);
 
         vm.stopBroadcast();
@@ -88,10 +89,10 @@ contract DeployScript is Script {
             )
         );
         resultRegisterProxy = Register(payable(registerProxyAddress));
-        console.log("Beacon holder address for User contract: ", address(resultAccessManagedUserBeaconHolder));
-        console.log("Beacon holder address for Riddle contract: ", address(resultAccessManagedRiddleBeaconHolder));
-        console.log("Register implementation address: ", address(resultRegisterImpl));
-        console.log("Register proxy address: ", address(resultRegisterProxy));
+        console.log("Beacon holder address for User contract:", address(resultAccessManagedUserBeaconHolder));
+        console.log("Beacon holder address for Riddle contract:", address(resultAccessManagedRiddleBeaconHolder));
+        console.log("Register implementation address:", address(resultRegisterImpl));
+        console.log("Register proxy address:", address(resultRegisterProxy));
 
         return (
             accessManagerUpgradeable,

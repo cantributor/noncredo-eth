@@ -2,12 +2,18 @@ source ../.env
 RIDDLE_CONTRACT_ADDRESS=$(cast call $ANVIL_REGISTER_PROXY_ADDRESS "riddles(uint256)(address)" 0 --rpc-url $ANVIL_RPC_URL)
 echo Riddle contract address = $RIDDLE_CONTRACT_ADDRESS
 
-cast send $RIDDLE_CONTRACT_ADDRESS "guess(bool)(address,bool,uint256)" true  --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_USER1_PRIVATE_KEY --value 1ether
-cast send $RIDDLE_CONTRACT_ADDRESS "guess(bool)(address,bool,uint256)" false --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_USER2_PRIVATE_KEY --value 3ether
+echo current block number: $(cast block-number --rpc-url $ANVIL_RPC_URL)
+echo riddle guess deadline $(cast call $RIDDLE_CONTRACT_ADDRESS "guessDeadline()(uint256)" --rpc-url $ANVIL_RPC_URL)
+echo riddle reveal deadline $(cast call $RIDDLE_CONTRACT_ADDRESS "revealDeadline()(uint256)" --rpc-url $ANVIL_RPC_URL)
+
+cast send $RIDDLE_CONTRACT_ADDRESS "guess(bool)(address,bool,uint256)" true  --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_USER1_PRIVATE_KEY --value 1000ether
+cast send $RIDDLE_CONTRACT_ADDRESS "guess(bool)(address,bool,uint256)" false --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_USER2_PRIVATE_KEY --value 3000ether
 
 echo Registered guess 1 $(cast call $RIDDLE_CONTRACT_ADDRESS "guessOf(address)(address,bool,uint256)" 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --rpc-url $ANVIL_RPC_URL)
 echo Registered guess 2 $(cast call $RIDDLE_CONTRACT_ADDRESS "guessOf(address)(address,bool,uint256)" 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC --rpc-url $ANVIL_RPC_URL)
 
-echo owner balance: $(cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
-echo user1 balance: $(cast balance 0x70997970C51812dc3A010C7d01b50e0d17dc79C8)
-echo user2 balance: $(cast balance 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC)
+echo owner balance: $(cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --rpc-url $ANVIL_RPC_URL)
+echo user1 balance: $(cast balance 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --rpc-url $ANVIL_RPC_URL)
+echo user2 balance: $(cast balance 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC --rpc-url $ANVIL_RPC_URL)
+
+echo current block number: $(cast block-number --rpc-url $ANVIL_RPC_URL)

@@ -1,10 +1,20 @@
 source ../.env
 echo totalUsers $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "totalUsers()(uint32)" --rpc-url $ANVIL_RPC_URL)
 echo allNicks $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "allNicks()(string[])" --rpc-url $ANVIL_RPC_URL)
+
+echo guess duration \(blocks\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "guessDurationBlocks()(uint32)" --rpc-url $ANVIL_RPC_URL)
+echo reveal duration \(blocks\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "revealDurationBlocks()(uint32)" --rpc-url $ANVIL_RPC_URL)
+echo register reward \(%\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "registerRewardPercent()(uint8)" --rpc-url $ANVIL_RPC_URL)
+echo riddling reward \(%\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "riddlingRewardPercent()(uint8)" --rpc-url $ANVIL_RPC_URL)
+
 echo userOf\(\"owner\"\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" owner --rpc-url $ANVIL_RPC_URL)
 echo userOf\(\"user1\"\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" user1 --rpc-url $ANVIL_RPC_URL)
 echo userOf\(\"user2\"\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" user2 --rpc-url $ANVIL_RPC_URL)
+
 echo totalRiddles $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "totalRiddles()(uint32)" --rpc-url $ANVIL_RPC_URL)
-echo owner balance: $(cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
-echo user1 balance: $(cast balance 0x70997970C51812dc3A010C7d01b50e0d17dc79C8)
-echo user2 balance: $(cast balance 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC)
+
+echo owner balance: $(cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --rpc-url $ANVIL_RPC_URL)
+echo user1 balance: $(cast balance 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --rpc-url $ANVIL_RPC_URL)
+echo user2 balance: $(cast balance 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC --rpc-url $ANVIL_RPC_URL)
+
+echo current block number: $(cast block-number --rpc-url $ANVIL_RPC_URL)

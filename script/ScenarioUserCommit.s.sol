@@ -17,14 +17,22 @@ contract ScenarioUserCommit is Script {
     function run(address payable registerProxyAddress, uint256 ownerPrivateKey) public {
         registerProxy = Register(registerProxyAddress);
 
-        User owner = registerProxy.userOf("owner");
+        vm.broadcast(ownerPrivateKey);
+        registerProxy.setGuessAndRevealDuration(1, 1);
+        vm.broadcast(ownerPrivateKey);
+        registerProxy.setRegisterAndRiddlingRewards(1, 9);
+
+        console.log("Guess minimum duration (blocks):", registerProxy.guessDurationBlocks());
+        console.log("Reveal minimum duration (blocks):", registerProxy.revealDurationBlocks());
+        console.log("Register reward (%):", registerProxy.registerRewardPercent());
+        console.log("Riddling reward (%):", registerProxy.riddlingRewardPercent());
 
         string memory statement = "I am killer!";
         uint256 encryptedSolution = Utils.encryptSolution(statement, false, "secret");
         console.log("Encrypted solution: ", encryptedSolution);
 
+        User owner = registerProxy.userOf("owner");
         vm.broadcast(ownerPrivateKey);
-        Riddle riddle = owner.commit(statement, encryptedSolution);
-        console.log("Riddle contract address: ", address(riddle));
+        owner.commit(statement, encryptedSolution);
     }
 }

@@ -15,8 +15,8 @@ library Utils {
     uint8 public constant MIN_RIDDLE_LENGTH = 10;
     uint8 public constant MAX_RIDDLE_LENGTH = 128;
 
-    uint32 public constant MIN_DURATION = 60 * (60 / 12); // 1 hour * 60 min (12 sec per block)
-    uint32 public constant MAX_DURATION = 30 * 24 * 60 * (60 / 12); // 30 days * 24 hours * 60 min (12 sec per block)
+    uint32 public constant MIN_DURATION = 1;
+    uint32 public constant MAX_DURATION = 30 * 24 * 60 * 60 / 12; // 30 days * 24 hours * 60 min * 60 s /12 s per block
 
     uint8 public constant MIN_PERCENT = 0;
     uint8 public constant MAX_PERCENT = 100;
