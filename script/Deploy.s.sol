@@ -39,7 +39,7 @@ contract DeployScript is Script {
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, msg.sender, 0);
         accessManager.grantRole(Roles.USER_ADMIN_ROLE, msg.sender, 0);
         accessManager.grantRole(Roles.FINANCE_ADMIN_ROLE, msg.sender, 0);
-        console.log("UPGRADE_ADMIN_ROLE & USER_ADMIN_ROLE granted to:", msg.sender);
+        console.log("UPGRADE_ADMIN_ROLE & USER_ADMIN_ROLE & FINANCE_ADMIN_ROLE granted to:", msg.sender);
 
         vm.stopBroadcast();
     }
