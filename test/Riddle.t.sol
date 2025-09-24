@@ -22,6 +22,7 @@ import {DeployScript} from "../script/Deploy.s.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 contract RiddleTest is Test {
     IAccessManager private accessManager;
@@ -30,6 +31,7 @@ contract RiddleTest is Test {
 
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
+    address private constant USER_ADMIN = address(0xB);
     address private constant FINANCE_ADMIN = address(0xC);
 
     address private constant RIDDLING = address(100);
@@ -66,6 +68,7 @@ contract RiddleTest is Test {
 
         vm.startPrank(OWNER);
         accessManager.grantRole(Roles.UPGRADE_ADMIN_ROLE, UPGRADE_ADMIN, 0);
+        accessManager.grantRole(Roles.USER_ADMIN_ROLE, USER_ADMIN, 0);
         accessManager.grantRole(Roles.FINANCE_ADMIN_ROLE, FINANCE_ADMIN, 0);
         vm.stopPrank();
 
@@ -125,6 +128,23 @@ contract RiddleTest is Test {
         );
         vm.prank(GUESSING_1);
         riddle.guess(false);
+    }
+
+    function test_RevertWhen_OnPause() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+
+        vm.prank(USER_ADMIN);
+        registerProxy.pause();
+
+        bytes memory encodedEnforcedPause = abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector);
+
+        vm.prank(GUESSING_1);
+        vm.expectRevert(encodedEnforcedPause);
+        riddle.guess{value: 1000}(true);
+
+        vm.prank(RIDDLING);
+        vm.expectRevert(encodedEnforcedPause);
+        riddle.reveal(USER_SECRET_KEY);
     }
 
     function test_guess_Successful() public {

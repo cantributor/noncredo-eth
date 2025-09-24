@@ -9,6 +9,7 @@ import {IUser} from "./interfaces/IUser.sol";
 import {Utils} from "./Utils.sol";
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
  * @title Riddle
@@ -175,6 +176,9 @@ contract Riddle is IRiddle, OwnableUpgradeable {
             revert RiddleAlreadyRevealed(id, address(this), msgSender);
         }
         Register register = user.register();
+        if (register.paused()) {
+            revert PausableUpgradeable.EnforcedPause();
+        }
         if (register.riddles(registerIndex) != this) {
             revert RiddleIsNotRegistered(id, address(this), msgSender);
         }
@@ -215,6 +219,10 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      */
     function reveal(string calldata userSecretKey) external override onlyOwner returns (bool solution) {
         address msgSender = _msgSender();
+        Register register = user.register();
+        if (register.paused()) {
+            revert PausableUpgradeable.EnforcedPause();
+        }
         if (revealed) {
             revert RiddleAlreadyRevealed(id, address(this), msgSender);
         }

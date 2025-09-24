@@ -18,6 +18,7 @@ import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Cont
 import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable//utils/PausableUpgradeable.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
@@ -27,7 +28,7 @@ import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165C
  * @title Register
  * @dev Main register contract
  */
-contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUpgradeable {
+contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUpgradeable, PausableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {
         _disableInitializers();
@@ -152,7 +153,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param nick Nick for registration
      * @return user Registered user
      */
-    function registerMeAs(string calldata nick) external virtual returns (User user) {
+    function registerMeAs(string calldata nick) external virtual whenNotPaused returns (User user) {
         ShortString nickShortString = Utils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
@@ -213,14 +214,14 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     /**
      * @dev Remove contract - restricted access function (for admins)
      */
-    function remove(address contractAddress) external virtual restricted {
+    function remove(address contractAddress) external virtual whenNotPaused restricted {
         removalImplementation(contractAddress);
     }
 
     /**
      * @dev Remove caller
      */
-    function removeMe() external virtual {
+    function removeMe() external virtual whenNotPaused {
         removalImplementation(_msgSender());
     }
 
@@ -249,7 +250,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Riddle id generator
      * @return Next riddle id value
      */
-    function nextRiddleId() external virtual returns (uint32) {
+    function nextRiddleId() external virtual whenNotPaused returns (uint32) {
         riddleCounter++;
         return riddleCounter;
     }
@@ -266,7 +267,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Register riddle
      * @param riddle Riddle contract to register
      */
-    function registerRiddle(Riddle riddle) external virtual {
+    function registerRiddle(Riddle riddle) external virtual whenNotPaused {
         bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
         Riddle foundRiddle = riddleByStatement[statementHash];
         if (address(foundRiddle) != address(0)) {
@@ -288,7 +289,12 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param _guessDuration New guess duration value
      * @param _revealDuration New reveal duration value
      */
-    function setGuessAndRevealDuration(uint32 _guessDuration, uint32 _revealDuration) external virtual restricted {
+    function setGuessAndRevealDuration(uint32 _guessDuration, uint32 _revealDuration)
+        external
+        virtual
+        whenNotPaused
+        restricted
+    {
         Utils.validateDurations(_guessDuration, _revealDuration);
         guessDurationBlocks = _guessDuration;
         revealDurationBlocks = _revealDuration;
@@ -299,7 +305,12 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param _registerReward New register reward percent value
      * @param _riddlingReward New riddling reward percent value
      */
-    function setRegisterAndRiddlingRewards(uint8 _registerReward, uint8 _riddlingReward) external virtual restricted {
+    function setRegisterAndRiddlingRewards(uint8 _registerReward, uint8 _riddlingReward)
+        external
+        virtual
+        whenNotPaused
+        restricted
+    {
         Utils.validatePercent(_registerReward);
         Utils.validatePercent(_riddlingReward);
         registerRewardPercent = _registerReward;
@@ -312,6 +323,20 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      */
     function paymentsArray() external view virtual returns (Payment[] memory) {
         return payments;
+    }
+
+    /**
+     * @dev Pause execution
+     */
+    function pause() external virtual restricted {
+        _pause();
+    }
+
+    /**
+     * @dev Resume execution
+     */
+    function resume() external virtual restricted {
+        _unpause();
     }
 
     /**

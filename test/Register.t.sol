@@ -14,6 +14,8 @@ import {Utils} from "src/Utils.sol";
 
 import {RegisterV2} from "./upgrades/RegisterV2.sol";
 
+import {FakeUser} from "./fakes/FakeUser.sol";
+
 import {DeployScript} from "../script/Deploy.s.sol";
 
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
@@ -23,11 +25,11 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-import {FakeUser} from "./fakes/FakeUser.sol";
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract RegisterTest is Test {
     IAccessManager private accessManager;
@@ -89,6 +91,47 @@ contract RegisterTest is Test {
 
         vm.expectRevert(encodedUnauthorized);
         registerProxy.setRegisterAndRiddlingRewards(0, 0);
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.pause();
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.resume();
+    }
+
+    function test_RevertWhen_OnPause() public {
+        vm.prank(OWNER);
+        User owner = registerProxy.registerMeAs("owner");
+
+        vm.prank(USER_ADMIN);
+        registerProxy.pause();
+
+        bytes memory encodedEnforcedPause = abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector);
+
+        vm.expectRevert(encodedEnforcedPause);
+        registerProxy.registerMeAs("user");
+
+        vm.expectRevert(encodedEnforcedPause);
+        registerProxy.remove(address(owner));
+
+        vm.expectRevert(encodedEnforcedPause);
+        registerProxy.setRegisterAndRiddlingRewards(0, 0);
+
+        vm.expectRevert(encodedEnforcedPause);
+        registerProxy.setGuessAndRevealDuration(0, 0);
+
+        vm.expectRevert(encodedEnforcedPause);
+        registerProxy.nextRiddleId();
+    }
+
+    function test_resume_Successful() public {
+        vm.prank(USER_ADMIN);
+        registerProxy.pause();
+
+        vm.prank(USER_ADMIN);
+        registerProxy.resume();
+
+        registerProxy.registerMeAs("user");
     }
 
     function test_RevertWhen_NickTooShortOrTooLong() public {

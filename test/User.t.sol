@@ -18,6 +18,7 @@ import {DeployScript} from "../script/Deploy.s.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 contract UserTest is Test {
     IAccessManager private accessManager;
@@ -104,6 +105,22 @@ contract UserTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(User.OnlyRegisterMayCallThis.selector, this));
         user.goodbye();
+    }
+
+    function test_RevertWhen_OnPause() public {
+        User user = registerProxy.registerMeAs("user");
+
+        vm.prank(USER_ADMIN);
+        registerProxy.pause();
+
+        bytes memory encodedEnforcedPause = abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector);
+
+        vm.prank(USER, USER);
+        vm.expectRevert(encodedEnforcedPause);
+        user.remove();
+
+        vm.expectRevert(encodedEnforcedPause);
+        user.commit(TYPICAL_RIDDLE_STATEMENT, 777);
     }
 
     function test_commit_RevertWhen_StatementTooShortOrTooLong() public {
