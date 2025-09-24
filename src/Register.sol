@@ -2,6 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IRiddle} from "./interfaces/IRiddle.sol";
 import {IUser} from "./interfaces/IUser.sol";
 import {Payment} from "./structs/Payment.sol";
 
@@ -68,6 +69,12 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     error NickNotRegistered(string nick);
 
     /**
+     * @dev Trying to get not registered riddle statement
+     * @param statement Not found statement
+     */
+    error RiddleStatementNotRegistered(string statement);
+
+    /**
      * @dev Nick already registered
      * @param nick Already registered nick
      */
@@ -87,6 +94,12 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param txOrigin Transaction origin
      */
     error IllegalActionCall(string action, address object, address msgSender, address txOrigin);
+
+    /**
+     * @dev Trying to call some function that should be called only by Register contract
+     * @param illegalCaller Illegal caller
+     */
+    error OnlyRegisterMayCallThis(address illegalCaller);
 
     /**
      * @dev Initializable implementation
@@ -200,12 +213,35 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
+     * @dev Remove riddle. Internal implementation
+     * @param riddle Riddle to remove
+     */
+    function removeRiddle(Riddle riddle) internal virtual {
+        bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
+        Riddle foundByStatement = riddleByStatement[statementHash];
+        if (address(foundByStatement) == address(0)) {
+            revert RiddleStatementNotRegistered(riddle.statement());
+        }
+        delete riddleByStatement[statementHash];
+        // check for existence in riddles already done in addressIsRegisteredRiddle(payable)
+        uint32 riddleIndex = riddle.index();
+        riddles[riddleIndex] = riddles[riddles.length - 1];
+        riddles[riddleIndex].setIndex(riddleIndex);
+        riddles.pop();
+        riddle.user().remove(riddle);
+        riddle.finalize();
+        emit Riddle.RiddleRemoved(address(riddle.user()), address(riddle), riddle.id());
+    }
+
+    /**
      * @dev Remove contract if it is registered User (internal implementation)
      * @param contractAddress Contract to remove
      */
     function removalImplementation(address contractAddress) internal virtual {
         if (addressIsRegisteredUser(contractAddress)) {
             removeUser(User(contractAddress));
+        } else if (addressIsRegisteredRiddle(payable(contractAddress))) {
+            removeRiddle(Riddle(payable(contractAddress)));
         } else {
             revert IllegalActionCall("remove", contractAddress, _msgSender(), tx.origin);
         }
@@ -272,7 +308,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         Riddle foundRiddle = riddleByStatement[statementHash];
         if (address(foundRiddle) != address(0)) {
             revert Riddle.RiddleAlreadyRegistered(
-                foundRiddle.id(), foundRiddle.user().nickString(), foundRiddle.userIndex()
+                foundRiddle.id(), foundRiddle.user().nickString(), foundRiddle.index()
             );
         }
         address userAddress = _msgSender();
@@ -391,6 +427,19 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         if (isUser) {
             User user = User(userAddress);
             return userByAccount[user.owner()] == user;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Check if address is registered user
+     */
+    function addressIsRegisteredRiddle(address payable riddleAddress) internal view virtual returns (bool) {
+        bool isRiddle = ERC165Checker.supportsInterface(riddleAddress, type(IRiddle).interfaceId);
+        if (isRiddle) {
+            Riddle riddle = Riddle(riddleAddress);
+            return riddles[riddle.index()] == riddle;
         } else {
             return false;
         }

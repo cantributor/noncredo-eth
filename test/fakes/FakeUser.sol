@@ -23,7 +23,7 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract FakeUser is IUser, Ownable, ERC165 {
     ShortString public nick;
     uint32 public index;
-    address payable internal registerAddress;
+    address payable public registerAddress;
 
     constructor(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
         Ownable(initialOwner)
@@ -42,6 +42,10 @@ contract FakeUser is IUser, Ownable, ERC165 {
         return 0;
     }
 
+    function indexOf(Riddle) external view virtual returns (int256) {
+        return -1;
+    }
+
     function nickString() external view virtual override returns (string memory) {
         return ShortStrings.toString(nick);
     }
@@ -55,6 +59,8 @@ contract FakeUser is IUser, Ownable, ERC165 {
     function remove() external virtual override {
         Register(registerAddress).removeMe();
     }
+
+    function remove(Riddle riddle) external virtual {}
 
     function register() external virtual override returns (Register) {
         return Register(registerAddress);

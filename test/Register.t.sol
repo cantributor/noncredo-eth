@@ -238,7 +238,7 @@ contract RegisterTest is Test {
         assertEq("user", user.nickString());
         assertEq(0, user.index());
         assertEq(USER, user.owner());
-        assertEq(address(registerProxy), address(user.register()));
+        assertEq(address(registerProxy), user.registerAddress());
         assertEq(address(user), address(registerProxy.users(0)));
     }
 
@@ -292,6 +292,35 @@ contract RegisterTest is Test {
 
         assertEq(0, util_UserOf("user1").index());
         assertEq(1, util_UserOf("user3").index());
+    }
+
+    function test_removeRiddle() public {
+        User user = registerProxy.registerMeAs("user");
+        Riddle riddle1 = user.commit("I am superman #1!", 101);
+        Riddle riddle2 = user.commit("I am superman #2!", 101);
+        Riddle riddle3 = user.commit("I am superman #3!", 101);
+
+        assertEq(3, registerProxy.totalRiddles());
+        assertEq(3, user.totalRiddles());
+        assertEq(0, riddle1.index());
+        assertEq(1, riddle2.index());
+        assertEq(2, riddle3.index());
+
+        vm.expectEmit(true, true, false, true);
+        emit Riddle.RiddleRemoved(address(user), address(riddle2), 2);
+        vm.prank(USER_ADMIN);
+        registerProxy.remove(address(riddle2));
+
+        assertEq(2, registerProxy.totalRiddles());
+        assertEq(2, user.totalRiddles());
+
+        assertEq(0, riddle1.index());
+        assertEq(1, riddle2.index());
+        assertEq(1, riddle3.index());
+        assertEq(address(riddle3), address(registerProxy.riddles(1)));
+
+        // below commit is possible because Register.riddleByStatement cleaned from riddle2.statement
+        user.commit(riddle2.statement(), 101);
     }
 
     function test_removeMe_RevertWhen_IllegalCaller() public {

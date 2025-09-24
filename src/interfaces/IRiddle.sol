@@ -10,12 +10,14 @@ import {Guess} from "../structs/Guess.sol";
  */
 interface IRiddle {
     function id() external view returns (uint32);
-    function registerIndex() external view returns (uint32);
-    function userIndex() external view returns (uint32);
+    function index() external view returns (uint32);
+    function setIndex(uint32 _index) external;
     function statement() external view returns (string memory);
     function encryptedSolution() external view returns (uint256);
     function guess(bool credo) external payable returns (Guess memory);
     function guessOf(address sender) external view returns (Guess memory);
     function reveal(string calldata userSecretKey) external returns (bool solution);
+    function remove() external;
+    function finalize() external;
     receive() external payable;
 }

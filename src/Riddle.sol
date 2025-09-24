@@ -10,20 +10,20 @@ import {Utils} from "./Utils.sol";
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /**
  * @title Riddle
  * @dev Riddle
  */
-contract Riddle is IRiddle, OwnableUpgradeable {
+contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
     string public statement;
     uint256 public encryptedSolution;
 
     uint32 public id;
-    uint32 public registerIndex;
-    uint32 public userIndex;
+    uint32 public index;
     IUser public user;
-    bool public revealed = false;
+    bool public revealed;
 
     uint256 public guessDeadline;
     uint256 public revealDeadline;
@@ -34,9 +34,9 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      * @dev Riddle already registered
      * @param riddleId Found riddle id
      * @param userNick Found riddle user nick
-     * @param riddleUserIndex Found riddle user index
+     * @param riddleIndex Found riddle register index
      */
-    error RiddleAlreadyRegistered(uint32 riddleId, string userNick, uint32 riddleUserIndex);
+    error RiddleAlreadyRegistered(uint32 riddleId, string userNick, uint32 riddleIndex);
 
     /**
      * @dev Owner of the Riddle cannot guess his own nick
@@ -99,6 +99,14 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     );
 
     /**
+     * @dev Riddle successfully removed
+     * @param userAddress User contract address
+     * @param riddleAddress Riddle contract address
+     * @param id Riddle id
+     */
+    event RiddleRemoved(address indexed userAddress, address indexed riddleAddress, uint32 id);
+
+    /**
      * @dev Riddle guess successfully registered
      * @param riddleAddress Riddle contract address
      * @param guessSender Guess sender address
@@ -137,8 +145,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      * @dev Initializable implementation
      * @param initialOwner Ownable implementation
      * @param _id Identifier
-     * @param _registerIndex Index in Register
-     * @param _userIndex Index at User
+     * @param _index Index in Register
      * @param _user User contract
      * @param _statement Riddle statement
      * @param _encryptedSolution Encrypted solution
@@ -146,16 +153,14 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     function initialize(
         address initialOwner,
         uint32 _id,
-        uint32 _registerIndex,
-        uint32 _userIndex,
+        uint32 _index,
         IUser _user,
         string calldata _statement,
         uint256 _encryptedSolution
     ) external initializer {
         __Ownable_init(initialOwner);
         id = _id;
-        registerIndex = _registerIndex;
-        userIndex = _userIndex;
+        index = _index;
         user = _user;
         statement = _statement;
         encryptedSolution = _encryptedSolution;
@@ -163,6 +168,24 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         Register reg = user.register();
         guessDeadline = block.number + reg.guessDurationBlocks();
         revealDeadline = guessDeadline + reg.revealDurationBlocks();
+    }
+
+    /**
+     * @dev Throws if called by any account other than the Register contract remembered in User.registerAddress
+     */
+    modifier onlyForRegister() {
+        if (msg.sender != user.registerAddress()) {
+            revert Register.OnlyRegisterMayCallThis(msg.sender);
+        }
+        _;
+    }
+
+    /**
+     * @dev Set index of riddle (should be implemented with onlyForUser modifier)
+     * @param _index New index value
+     */
+    function setIndex(uint32 _index) external virtual override onlyForRegister {
+        index = _index;
     }
 
     /**
@@ -179,7 +202,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         if (register.paused()) {
             revert PausableUpgradeable.EnforcedPause();
         }
-        if (register.riddles(registerIndex) != this) {
+        if (register.riddles(index) != this) {
             revert RiddleIsNotRegistered(id, address(this), msgSender);
         }
         register.userOf(msgSender);
@@ -231,7 +254,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         }
         solution = Utils.decryptSolution(this, userSecretKey);
         if (address(this).balance > 0) {
-            shareReward(solution);
+            shareBalance(false, solution);
         }
         revealed = true;
         return solution;
@@ -241,11 +264,11 @@ contract Riddle is IRiddle, OwnableUpgradeable {
      * @dev Share the riddle reward amongst players
      * @param solution Riddle solution (true/false)
      */
-    function shareReward(bool solution) internal {
+    function shareBalance(bool rollback, bool solution) internal {
         Register register = user.register();
         uint256 winnerBetsSum = 0;
         for (uint32 i = 0; i < guesses.length; i++) {
-            if (guesses[i].credo == solution) winnerBetsSum += guesses[i].bet;
+            if (rollback || guesses[i].credo == solution) winnerBetsSum += guesses[i].bet;
         }
         uint256 prize = address(this).balance - winnerBetsSum;
         uint256 registerReward = prize * register.registerRewardPercent() / 100;
@@ -253,7 +276,7 @@ contract Riddle is IRiddle, OwnableUpgradeable {
         uint256 guessingReward = address(this).balance - registerReward - riddlingReward;
         if (winnerBetsSum > 0) {
             for (uint32 i = 0; i < guesses.length; i++) {
-                if (guesses[i].credo == solution) {
+                if (rollback || guesses[i].credo == solution) {
                     if (guesses[i].bet > 0) {
                         uint256 thisAccountReward = guesses[i].bet * guessingReward / winnerBetsSum;
                         payReward(guesses[i].account, thisAccountReward);
@@ -285,9 +308,43 @@ contract Riddle is IRiddle, OwnableUpgradeable {
     }
 
     /**
+     * @dev In finalization process Riddle contract pays all its balance and stops further operation
+     */
+    function finalize() external onlyForRegister {
+        shareBalance(true, true);
+        delete guesses;
+        revealed = true;
+    }
+
+    /**
+     * @dev Remove this contract from Register (should be implemented with onlyOwner modifier)
+     */
+    function remove() external virtual override onlyOwner {
+        user.register().removeMe();
+    }
+
+    /**
+     * @dev Implementation of ERC165
+     * @param interfaceId Interface identifier
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IRiddle).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /**
      * @dev To receive sponsor payments (no guess)
      */
     receive() external payable override {
         emit SponsorPaymentReceived(address(this), _msgSender(), id, msg.value);
+    }
+    /**
+     * @dev Override of OwnableUpgradeable: throws if the sender is not the owner and not the master User contract
+     */
+
+    function _checkOwner() internal view virtual override {
+        address msgSender = _msgSender();
+        if (msgSender != owner() && msgSender != address(user)) {
+            revert OwnableUnauthorizedAccount(_msgSender());
+        }
     }
 }

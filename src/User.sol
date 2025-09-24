@@ -23,15 +23,9 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract User is IUser, OwnableUpgradeable, ERC165 {
     ShortString public nick;
     uint32 public index;
-    address payable internal registerAddress;
+    address payable public registerAddress;
 
     Riddle[] public riddles;
-
-    /**
-     * @dev Trying to call some function that should be called only by Register contract
-     * @param illegalCaller Illegal caller
-     */
-    error OnlyRegisterMayCallThis(address illegalCaller);
 
     /**
      * @dev User successfully registered
@@ -74,7 +68,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      */
     modifier onlyForRegister() {
         if (msg.sender != registerAddress) {
-            revert OnlyRegisterMayCallThis(msg.sender);
+            revert Register.OnlyRegisterMayCallThis(msg.sender);
         }
         _;
     }
@@ -97,16 +91,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         BeaconProxy riddleBeaconProxy = new BeaconProxy(
             address(riddleBeaconHolder.beacon()),
             abi.encodeCall(
-                Riddle.initialize,
-                (
-                    owner(),
-                    reg.nextRiddleId(),
-                    reg.totalRiddles(),
-                    uint32(riddles.length),
-                    this,
-                    statement,
-                    encryptedSolution
-                )
+                Riddle.initialize, (owner(), reg.nextRiddleId(), reg.totalRiddles(), this, statement, encryptedSolution)
             )
         );
         riddle = Riddle(payable(riddleBeaconProxy));
@@ -121,6 +106,22 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      */
     function totalRiddles() external view virtual override returns (uint32) {
         return uint32(riddles.length);
+    }
+
+    /**
+     * @dev Find riddle index in riddles array
+     * @param riddle Riddle to find
+     * @return riddleIndex Riddle index in riddles array
+     */
+    function indexOf(Riddle riddle) external view virtual override returns (int256 riddleIndex) {
+        riddleIndex = -1;
+        for (uint256 i = 0; i < riddles.length; i++) {
+            if (riddles[i] == riddle) {
+                riddleIndex = int256(i);
+                break;
+            }
+        }
+        return riddleIndex;
     }
 
     /**
@@ -143,15 +144,30 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      * @dev Clean all children contracts and stop operating (should be implemented with onlyForRegister modifier)
      */
     function goodbye() external virtual override onlyForRegister {
-        // TODO: implement riddles removing
-        // TODO: implement stop operating
+        for (int256 i = int256(riddles.length) - 1; i >= 0; i--) {
+            riddles[uint256(i)].remove();
+        }
     }
 
     /**
-     * @dev Remove this contract from Register (should be implemented with OnlyOwner modifier)
+     * @dev Remove this contract from Register (should be implemented with onlyOwner modifier)
      */
     function remove() external virtual override onlyOwner {
         register().removeMe();
+    }
+
+    /**
+     * @dev Remove riddle
+     * @param riddle Riddle to remove
+     */
+    function remove(Riddle riddle) external virtual onlyForRegister {
+        int256 foundRiddleIndex = this.indexOf(riddle);
+        if (foundRiddleIndex < 0) {
+            revert Riddle.RiddleIsNotRegistered(riddle.id(), address(riddle), _msgSender());
+        }
+        uint256 riddleIndex = uint256(foundRiddleIndex);
+        riddles[riddleIndex] = riddles[riddles.length - 1];
+        riddles.pop();
     }
 
     /**
@@ -167,7 +183,6 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      * @param interfaceId Interface identifier
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IUser).interfaceId || interfaceId == type(OwnableUpgradeable).interfaceId
-            || super.supportsInterface(interfaceId);
+        return interfaceId == type(IUser).interfaceId || super.supportsInterface(interfaceId);
     }
 }

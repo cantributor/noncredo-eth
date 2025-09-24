@@ -75,14 +75,19 @@ contract UserTest is Test {
 
     function test_remove_Successful() public {
         User user = registerProxy.registerMeAs("user"); // owner: USER
+        Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
         assertEq(1, registerProxy.totalUsers());
+        assertEq(1, registerProxy.totalRiddles());
         vm.prank(USER, USER);
+        vm.expectEmit(true, true, false, true);
+        emit Riddle.RiddleRemoved(address(user), address(riddle), 1);
         vm.expectEmit(true, true, true, false);
         emit User.UserRemoved(USER, "user", USER);
         user.remove();
 
         assertEq(0, registerProxy.totalUsers());
+        assertEq(0, registerProxy.totalRiddles());
     }
 
     function test_RevertWhen_NotOwnerCalls() public {
@@ -99,12 +104,16 @@ contract UserTest is Test {
 
     function test_RevertWhen_NotRegisterCalls() public {
         User user = registerProxy.registerMeAs("user");
+        Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
-        vm.expectRevert(abi.encodeWithSelector(User.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
         user.setIndex(666);
 
-        vm.expectRevert(abi.encodeWithSelector(User.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
         user.goodbye();
+
+        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        user.remove(riddle);
     }
 
     function test_RevertWhen_OnPause() public {
@@ -152,8 +161,7 @@ contract UserTest is Test {
         assertEq(USER, riddle1.owner());
         assertEq(TYPICAL_RIDDLE_STATEMENT, riddle1.statement());
         assertEq(1, riddle1.id());
-        assertEq(0, riddle1.userIndex());
-        assertEq(0, riddle1.registerIndex());
+        assertEq(0, riddle1.index());
         assertEq(currentBlockNumber + Utils.MIN_DURATION, riddle1.guessDeadline());
         assertEq(currentBlockNumber + Utils.MIN_DURATION * 2, riddle1.revealDeadline());
 
@@ -165,8 +173,7 @@ contract UserTest is Test {
         assertEq(2, registerProxy.totalRiddles());
         assertEq(OWNER, riddle2.owner());
         assertEq(2, riddle2.id());
-        assertEq(0, riddle2.userIndex());
-        assertEq(1, riddle2.registerIndex());
+        assertEq(1, riddle2.index());
 
         assertEq(address(riddle1), address(user1.riddles(0)));
         assertEq(address(riddle2), address(user2.riddles(0)));
@@ -187,6 +194,22 @@ contract UserTest is Test {
         user2.commit(TYPICAL_RIDDLE_STATEMENT, 777);
 
         assertEq(1, registerProxy.totalRiddles());
+    }
+
+    function test_indexOf() public {
+        User user1 = registerProxy.registerMeAs("user1");
+        Riddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 101);
+        Riddle riddle2 = user1.commit("I am superman!", 101);
+
+        vm.startPrank(OWNER);
+        User user2 = registerProxy.registerMeAs("user2");
+        Riddle riddle3 = user2.commit("I am Superman", 101);
+
+        assertEq(0, user1.indexOf(riddle1));
+        assertEq(1, user1.indexOf(riddle2));
+        assertEq(-1, user1.indexOf(riddle3));
+
+        assertEq(0, user2.indexOf(riddle3));
     }
 
     function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {

@@ -99,6 +99,40 @@ contract RiddleTest is Test {
         vm.deal(GUESSING_NOT_REGISTERED, 1000);
     }
 
+    function test_RevertWhen_NotRegisterCalls() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+
+        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        riddle.setIndex(666);
+
+        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        riddle.finalize();
+    }
+
+    function test_RevertWhen_NotOwnerCalls() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+
+        bytes memory encodedOwnableUnauthorizedAccount =
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this));
+
+        vm.expectRevert(encodedOwnableUnauthorizedAccount);
+        riddle.reveal("no matter");
+
+        vm.expectRevert(encodedOwnableUnauthorizedAccount);
+        riddle.remove();
+    }
+
+    function test_setIndex() public {
+        Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+
+        assertEq(0, riddle.index());
+
+        vm.prank(address(registerProxy));
+        riddle.setIndex(777);
+
+        assertEq(777, riddle.index());
+    }
+
     function test_guess_RevertWhen_AccountNotRegistered() public {
         Riddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
 
@@ -145,6 +179,10 @@ contract RiddleTest is Test {
         vm.prank(RIDDLING);
         vm.expectRevert(encodedEnforcedPause);
         riddle.reveal(USER_SECRET_KEY);
+
+        vm.prank(RIDDLING);
+        vm.expectRevert(encodedEnforcedPause);
+        riddle.remove();
     }
 
     function test_guess_Successful() public {
@@ -304,6 +342,43 @@ contract RiddleTest is Test {
         assertEq(1300, GUESSING_1.balance);
         assertEq(2600, GUESSING_2.balance);
         assertEq(0, GUESSING_3.balance);
+    }
+
+    function test_remove_Successful() public {
+        Riddle riddle1 = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        Riddle riddle2 = util_CreateRiddle("I am superman!", true, USER_SECRET_KEY);
+
+        vm.prank(GUESSING_1);
+        riddle1.guess{value: 1000}(true);
+        vm.prank(GUESSING_2);
+        riddle1.guess{value: 2000}(true);
+        vm.prank(GUESSING_3);
+        riddle1.guess{value: 1000}(false);
+
+        assertEq(2, registerProxy.totalRiddles());
+        assertEq(2, riddling.totalRiddles());
+        assertEq(1, riddle2.index());
+
+        vm.expectEmit(true, true, false, true);
+        emit Riddle.RiddleRemoved(address(riddling), address(riddle1), 1);
+        vm.prank(RIDDLING);
+        riddle1.remove();
+
+        assertEq(1, registerProxy.totalRiddles());
+        assertEq(1, riddling.totalRiddles());
+        assertEq(0, riddle1.index());
+        assertEq(0, riddle2.index());
+
+        // all bets rolled back
+        assertEq(0, payable(riddle1).balance);
+        assertEq(0, payable(registerProxy).balance);
+        assertEq(0, RIDDLING.balance);
+        assertEq(1000, GUESSING_1.balance);
+        assertEq(2000, GUESSING_2.balance);
+        assertEq(1000, GUESSING_3.balance);
+
+        // below commit is possible because Register.riddleByStatement cleaned from riddle1.statement
+        util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
     }
 
     function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {
