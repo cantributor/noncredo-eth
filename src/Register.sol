@@ -205,8 +205,10 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         delete userByNick[user.nick()];
         delete userByAccount[user.owner()];
         uint32 userIndex = user.index();
-        users[userIndex] = users[users.length - 1];
-        users[userIndex].setIndex(userIndex);
+        if (userIndex < users.length - 1) {
+            users[userIndex] = users[users.length - 1];
+            users[userIndex].setIndex(userIndex);
+        }
         users.pop();
         user.goodbye();
         emit User.UserRemoved(user.owner(), user.nickString(), tx.origin);
@@ -225,8 +227,10 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         delete riddleByStatement[statementHash];
         // check for existence in riddles already done in addressIsRegisteredRiddle(payable)
         uint32 riddleIndex = riddle.index();
-        riddles[riddleIndex] = riddles[riddles.length - 1];
-        riddles[riddleIndex].setIndex(riddleIndex);
+        if (riddleIndex < riddles.length - 1) {
+            riddles[riddleIndex] = riddles[riddles.length - 1];
+            riddles[riddleIndex].setIndex(riddleIndex);
+        }
         riddles.pop();
         riddle.user().remove(riddle);
         riddle.finalize();

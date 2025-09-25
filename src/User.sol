@@ -166,7 +166,9 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
             revert Riddle.RiddleIsNotRegistered(riddle.id(), address(riddle), _msgSender());
         }
         uint256 riddleIndex = uint256(foundRiddleIndex);
-        riddles[riddleIndex] = riddles[riddles.length - 1];
+        if (riddleIndex < riddles.length - 1) {
+            riddles[riddleIndex] = riddles[riddles.length - 1];
+        }
         riddles.pop();
     }
 
