@@ -485,7 +485,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         if (amount == 0) {
             revert RegisterBalanceIsEmpty(beneficiary);
         }
-        (bool success,) = beneficiary.call{value: amount}(bytes("From Noncredo"));
+        (bool success,) = beneficiary.call{value: amount}("");
         if (!success) {
             revert WithdrawalError(beneficiary);
         }
