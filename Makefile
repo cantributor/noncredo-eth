@@ -4,7 +4,7 @@ build:
 	forge fmt && forge build
 
 build-with-optimization:
-	forge fmt && forge clean && forge cache clean && forge build --optimize --optimizer-runs 200 --via-ir
+	forge fmt && forge clean && forge cache clean && forge build --optimize --optimizer-runs 100 --via-ir
 
 test: build
 	forge test

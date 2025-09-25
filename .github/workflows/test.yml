@@ -39,7 +39,7 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge build --sizes --optimize --optimizer-runs 200
+          forge build --sizes --optimize --optimizer-runs 100
         id: build
 
       - name: Run Forge tests

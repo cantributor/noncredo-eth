@@ -47,7 +47,7 @@ contract RegisterTest is Test {
     address private constant UPGRADE_ADMIN = address(0xA);
     address private constant USER_ADMIN = address(0xB);
     address private constant FINANCE_ADMIN = address(0xC);
-    address private constant BAD_GUY = address(0xC);
+    address private constant BAD_GUY = address(0xF);
     address private immutable USER = address(this);
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
@@ -59,6 +59,7 @@ contract RegisterTest is Test {
         vm.label(SIGNER, "SIGNER");
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
         vm.label(USER_ADMIN, "USER_ADMIN");
+        vm.label(FINANCE_ADMIN, "FINANCE_ADMIN");
         vm.label(BAD_GUY, "BAD_GUY");
 
         DeployScript deployScript = new DeployScript();
