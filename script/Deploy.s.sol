@@ -137,6 +137,10 @@ contract DeployScript is Script {
             registerProxyAddr, setRegisterAndRiddlingRewardsSelector, Roles.FINANCE_ADMIN_ROLE
         );
 
+        bytes4[] memory withdrawSelector = new bytes4[](1);
+        withdrawSelector[0] = bytes4(keccak256("withdraw()"));
+        accessMgr.setTargetFunctionRole(registerProxyAddr, withdrawSelector, Roles.FINANCE_ADMIN_ROLE);
+
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);
         upgradeToAndCallSelector[0] = bytes4(keccak256("upgradeToAndCall(address,bytes)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, upgradeToAndCallSelector, Roles.UPGRADE_ADMIN_ROLE);

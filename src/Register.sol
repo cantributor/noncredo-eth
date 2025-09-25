@@ -102,6 +102,33 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     error OnlyRegisterMayCallThis(address illegalCaller);
 
     /**
+     * @dev Trying to withdraw funds with empty Register balance
+     * @param withdrawer Address of withdrawer
+     */
+    error RegisterBalanceIsEmpty(address withdrawer);
+
+    /**
+     * @dev Withdrawal error
+     * @param account Beneficiary address
+     */
+    error WithdrawalError(address account);
+
+    /**
+     * @dev Payment received
+     * @param paymentSender Payment sender address
+     * @param riddleId Riddle id
+     * @param amount Payment amount
+     */
+    event PaymentReceived(address indexed paymentSender, uint32 indexed riddleId, uint256 amount);
+
+    /**
+     * @dev Withdrawal of register funds with payments array cleaning
+     * @param account Beneficiary address
+     * @param amount Amount of funds withdrawn
+     */
+    event Withdrawal(address indexed account, uint256 amount);
+
+    /**
      * @dev Initializable implementation
      * @param _initialAuthority Access manager
      * @param _userBeaconHolder AccessManagedBeaconHolder for User contract
@@ -450,9 +477,35 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
+     * @dev Withdraw funds
+     */
+    function withdraw() external virtual restricted {
+        address payable beneficiary = payable(_msgSender());
+        uint256 amount = address(this).balance;
+        if (amount == 0) {
+            revert RegisterBalanceIsEmpty(beneficiary);
+        }
+        (bool success,) = beneficiary.call{value: amount}(bytes("From Noncredo"));
+        if (!success) {
+            revert WithdrawalError(beneficiary);
+        }
+        delete payments;
+        emit Withdrawal(beneficiary, amount);
+    }
+
+    /**
      * @dev Receive payment
      */
     receive() external payable {
-        payments.push(Payment(_msgSender(), msg.value));
+        address payable msgSender = payable(_msgSender());
+        Payment memory payment;
+        if (addressIsRegisteredRiddle(msgSender)) {
+            Riddle riddle = Riddle(msgSender);
+            payment = Payment(msgSender, riddle.id(), msg.value);
+        } else {
+            payment = Payment(msgSender, 0, msg.value);
+        }
+        payments.push(payment);
+        emit PaymentReceived(payment.payer, payment.riddleId, payment.amount);
     }
 }

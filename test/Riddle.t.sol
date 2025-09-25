@@ -271,6 +271,8 @@ contract RiddleTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Riddle.RewardPayed(address(riddle), RIDDLING, 90);
         vm.expectEmit(true, true, false, true);
+        emit Register.PaymentReceived(address(riddle), 1, 910);
+        vm.expectEmit(true, true, false, true);
         emit Riddle.RewardPayed(address(riddle), payable(registerProxy), 910);
 
         vm.prank(RIDDLING);
@@ -283,6 +285,7 @@ contract RiddleTest is Test {
         Payment[] memory payments = registerProxy.paymentsArray();
         assertEq(1, payments.length);
         assertEq(910, payments[0].amount);
+        assertEq(1, payments[0].riddleId);
         assertEq(address(riddle), payments[0].payer);
     }
 

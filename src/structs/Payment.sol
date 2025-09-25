@@ -9,5 +9,6 @@ pragma solidity 0.8.28;
  */
 struct Payment {
     address payer;
+    uint32 riddleId;
     uint256 amount;
 }

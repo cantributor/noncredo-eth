@@ -11,6 +11,7 @@ import {Utils} from "./Utils.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title Riddle
@@ -79,13 +80,13 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
     error GuessPeriodNotFinished(uint32 riddleId, uint256 blockNumber, uint256 guessDeadline);
 
     /**
-     * @dev Reward error
+     * @dev Payment error
      * @param riddleAddress Riddle contract address
      * @param riddleId Riddle id
-     * @param rewardAddress Address of guessing account
-     * @param rewardValue Value of reward
+     * @param receiverAddress Address of receiving account
+     * @param amount Value of reward
      */
-    error RewardError(address riddleAddress, uint32 riddleId, address rewardAddress, uint256 rewardValue);
+    error PaymentError(address riddleAddress, uint32 riddleId, address receiverAddress, uint256 amount);
 
     /**
      * @dev Riddle successfully registered
@@ -274,22 +275,23 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         uint256 registerReward = prize * register.registerRewardPercent() / 100;
         uint256 riddlingReward = prize * register.riddlingRewardPercent() / 100;
         uint256 guessingReward = address(this).balance - registerReward - riddlingReward;
+        bytes memory message = abi.encode(string.concat("For Riddle: ", Strings.toString(id)));
         if (winnerBetsSum > 0) {
             for (uint32 i = 0; i < guesses.length; i++) {
                 if (rollback || guesses[i].credo == solution) {
                     if (guesses[i].bet > 0) {
                         uint256 thisAccountReward = guesses[i].bet * guessingReward / winnerBetsSum;
-                        payReward(guesses[i].account, thisAccountReward);
+                        payReward(guesses[i].account, thisAccountReward, message);
                     }
                 }
             }
         }
         if (riddlingReward > 0) {
-            payReward(owner(), riddlingReward);
+            payReward(owner(), riddlingReward, message);
         }
         uint256 remainder = address(this).balance;
         if (remainder > 0) {
-            payReward(payable(register), remainder);
+            payReward(payable(register), remainder, "");
         }
     }
 
@@ -298,12 +300,12 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
      * @param beneficiary Beneficiary address
      * @param amount Reward amount
      */
-    function payReward(address beneficiary, uint256 amount) internal {
-        (bool success,) = beneficiary.call{value: amount}("");
+    function payReward(address beneficiary, uint256 amount, bytes memory message) internal {
+        (bool success,) = beneficiary.call{value: amount}(message);
         if (success) {
             emit RewardPayed(payable(this), beneficiary, amount);
         } else {
-            revert RewardError(payable(this), id, beneficiary, amount);
+            revert PaymentError(payable(this), id, beneficiary, amount);
         }
     }
 

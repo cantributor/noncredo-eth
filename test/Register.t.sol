@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {Payment} from "../src/structs/Payment.sol";
+
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Riddle} from "src/Riddle.sol";
@@ -97,6 +99,9 @@ contract RegisterTest is Test {
 
         vm.expectRevert(encodedUnauthorized);
         registerProxy.resume();
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.withdraw();
     }
 
     function test_RevertWhen_OnPause() public {
@@ -350,6 +355,38 @@ contract RegisterTest is Test {
         vm.stopPrank();
 
         assertEq(1, registerProxy.totalUsers());
+    }
+
+    function test_withdraw_RevertWhen_RegisterBalanceIsEmpty() public {
+        vm.prank(FINANCE_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(Register.RegisterBalanceIsEmpty.selector, FINANCE_ADMIN));
+
+        registerProxy.withdraw();
+    }
+
+    function test_receive_withdraw_Successful() public {
+        assertEq(0, payable(registerProxy).balance);
+        assertEq(0, registerProxy.paymentsArray().length);
+
+        vm.expectEmit(true, true, false, true);
+        emit Register.PaymentReceived(address(this), 0, 1000);
+        (bool success,) = payable(registerProxy).call{value: 1000}("");
+        assertTrue(success);
+
+        assertEq(1000, payable(registerProxy).balance);
+        Payment[] memory payments = registerProxy.paymentsArray();
+        assertEq(1, payments.length);
+        assertEq(1000, payments[0].amount);
+        assertEq(0, payments[0].riddleId);
+        assertEq(address(this), payments[0].payer);
+
+        vm.prank(FINANCE_ADMIN);
+        vm.expectEmit(true, true, false, true);
+        emit Register.Withdrawal(FINANCE_ADMIN, 1000);
+        registerProxy.withdraw();
+
+        assertEq(0, payable(registerProxy).balance);
+        assertEq(0, registerProxy.paymentsArray().length);
     }
 
     function test_MetaTransaction() public {
