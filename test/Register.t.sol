@@ -128,6 +128,9 @@ contract RegisterTest is Test {
 
         vm.expectRevert(encodedEnforcedPause);
         registerProxy.nextRiddleId();
+
+        vm.expectRevert(encodedEnforcedPause);
+        registerProxy.withdraw();
     }
 
     function test_resume_Successful() public {
@@ -388,6 +391,7 @@ contract RegisterTest is Test {
 
         assertEq(0, payable(registerProxy).balance);
         assertEq(0, registerProxy.paymentsArray().length);
+        assertEq(1000, FINANCE_ADMIN.balance);
     }
 
     function test_MetaTransaction() public {

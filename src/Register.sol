@@ -479,13 +479,13 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     /**
      * @dev Withdraw funds
      */
-    function withdraw() external virtual restricted {
+    function withdraw() external virtual whenNotPaused restricted {
         address payable beneficiary = payable(_msgSender());
         uint256 amount = address(this).balance;
         if (amount == 0) {
             revert RegisterBalanceIsEmpty(beneficiary);
         }
-        (bool success,) = beneficiary.call{value: amount}("");
+        (bool success,) = beneficiary.call{value: amount}(bytes("From NonCredo"));
         if (!success) {
             revert WithdrawalError(beneficiary);
         }

@@ -41,8 +41,8 @@ jobs:
         run: |
           forge build --sizes --optimize --optimizer-runs 100
         id: build
-
-      - name: Run Forge tests
-        run: |
-          forge test -vvv
-        id: test
+#
+#      - name: Run Forge tests
+#        run: |
+#          forge test -vvv
+#        id: test

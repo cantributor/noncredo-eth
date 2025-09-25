@@ -53,6 +53,7 @@ contract RiddleTest is Test {
     function setUp() public {
         vm.label(OWNER, "OWNER");
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
+        vm.label(USER_ADMIN, "UPGRADE_ADMIN");
         vm.label(FINANCE_ADMIN, "FINANCE_ADMIN");
         vm.label(RIDDLING, "RIDDLING");
 
