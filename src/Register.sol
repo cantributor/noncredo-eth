@@ -7,7 +7,6 @@ import {IUser} from "./interfaces/IUser.sol";
 import {Payment} from "./structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
-import {Riddle} from "./Riddle.sol";
 import {Roles} from "./Roles.sol";
 import {Utils} from "./Utils.sol";
 
@@ -50,8 +49,8 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     uint8 public registerRewardPercent;
     uint8 public riddlingRewardPercent;
 
-    Riddle[] public riddles;
-    mapping(bytes32 statementHash => Riddle) internal riddleByStatement;
+    IRiddle[] public riddles;
+    mapping(bytes32 statementHash => IRiddle) internal riddleByStatement;
 
     Payment[] internal payments;
 
@@ -246,9 +245,9 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Remove riddle. Internal implementation
      * @param riddle Riddle to remove
      */
-    function removeRiddle(Riddle riddle) internal virtual {
+    function removeRiddle(IRiddle riddle) internal virtual {
         bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
-        Riddle foundByStatement = riddleByStatement[statementHash];
+        IRiddle foundByStatement = riddleByStatement[statementHash];
         if (address(foundByStatement) == address(0)) {
             revert RiddleStatementNotRegistered(riddle.statement());
         }
@@ -262,7 +261,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         riddles.pop();
         riddle.user().remove(riddle);
         riddle.finalize();
-        emit Riddle.RiddleRemoved(address(riddle.user()), address(riddle), riddle.id());
+        emit IRiddle.RiddleRemoved(address(riddle.user()), address(riddle), riddle.id());
     }
 
     /**
@@ -273,7 +272,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         if (addressIsRegisteredUser(contractAddress)) {
             removeUser(IUser(contractAddress));
         } else if (addressIsRegisteredRiddle(payable(contractAddress))) {
-            removeRiddle(Riddle(payable(contractAddress)));
+            removeRiddle(IRiddle(payable(contractAddress)));
         } else {
             revert IllegalActionCall("remove", contractAddress, _msgSender(), tx.origin);
         }
@@ -335,11 +334,11 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Register riddle
      * @param riddle Riddle contract to register
      */
-    function registerRiddle(Riddle riddle) external virtual whenNotPaused {
+    function registerRiddle(IRiddle riddle) external virtual whenNotPaused {
         bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
-        Riddle foundRiddle = riddleByStatement[statementHash];
+        IRiddle foundRiddle = riddleByStatement[statementHash];
         if (address(foundRiddle) != address(0)) {
-            revert Riddle.RiddleAlreadyRegistered(
+            revert IRiddle.RiddleAlreadyRegistered(
                 foundRiddle.id(), foundRiddle.user().nickString(), foundRiddle.index()
             );
         }
@@ -349,7 +348,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         riddles.push(riddle);
         riddleByStatement[statementHash] = riddle;
-        emit Riddle.RiddleRegistered(address(riddle.user()), address(riddle), riddle.id(), statementHash);
+        emit IRiddle.RiddleRegistered(address(riddle.user()), address(riddle), riddle.id(), statementHash);
     }
 
     /**
@@ -470,7 +469,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     function addressIsRegisteredRiddle(address payable riddleAddress) internal view virtual returns (bool) {
         bool isRiddle = ERC165Checker.supportsInterface(riddleAddress, type(IRiddle).interfaceId);
         if (isRiddle) {
-            Riddle riddle = Riddle(riddleAddress);
+            IRiddle riddle = IRiddle(riddleAddress);
             return riddles[riddle.index()] == riddle;
         } else {
             return false;
@@ -501,7 +500,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         address payable msgSender = payable(_msgSender());
         Payment memory payment;
         if (addressIsRegisteredRiddle(msgSender)) {
-            Riddle riddle = Riddle(msgSender);
+            IRiddle riddle = IRiddle(msgSender);
             payment = Payment(msgSender, riddle.id(), msg.value);
         } else {
             payment = Payment(msgSender, 0, msg.value);

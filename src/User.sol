@@ -7,7 +7,6 @@ import {IRiddle} from "./interfaces/IRiddle.sol";
 
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 import {Register} from "./Register.sol";
-import {Riddle} from "./Riddle.sol";
 import {Utils} from "./Utils.sol";
 
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -25,7 +24,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
     uint32 public index;
     address payable public registerAddress;
 
-    Riddle[] public riddles;
+    IRiddle[] public riddles;
 
     constructor() {
         _disableInitializers();
@@ -33,6 +32,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
 
     function initialize(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
         external
+        override
         initializer
     {
         __Ownable_init(initialOwner);
@@ -56,7 +56,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         virtual
         override
         onlyOwner
-        returns (Riddle riddle)
+        returns (IRiddle riddle)
     {
         Utils.validateRiddle(statement);
         Register reg = this.register();
@@ -64,10 +64,11 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         BeaconProxy riddleBeaconProxy = new BeaconProxy(
             address(riddleBeaconHolder.beacon()),
             abi.encodeCall(
-                Riddle.initialize, (owner(), reg.nextRiddleId(), reg.totalRiddles(), this, statement, encryptedSolution)
+                IRiddle.initialize,
+                (owner(), reg.nextRiddleId(), reg.totalRiddles(), this, statement, encryptedSolution)
             )
         );
-        riddle = Riddle(payable(riddleBeaconProxy));
+        riddle = IRiddle(payable(riddleBeaconProxy));
         riddles.push(riddle);
         reg.registerRiddle(riddle);
         return riddle;
@@ -77,7 +78,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         return uint32(riddles.length);
     }
 
-    function indexOf(Riddle riddle) external view virtual override returns (int256 riddleIndex) {
+    function indexOf(IRiddle riddle) external view virtual override returns (int256 riddleIndex) {
         riddleIndex = -1;
         for (uint256 i = 0; i < riddles.length; i++) {
             if (riddles[i] == riddle) {
@@ -106,10 +107,10 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         register().removeMe();
     }
 
-    function remove(Riddle riddle) external virtual onlyForRegister {
+    function remove(IRiddle riddle) external virtual onlyForRegister {
         int256 foundRiddleIndex = this.indexOf(riddle);
         if (foundRiddleIndex < 0) {
-            revert Riddle.RiddleIsNotRegistered(riddle.id(), address(riddle), _msgSender());
+            revert IRiddle.RiddleIsNotRegistered(riddle.id(), address(riddle), _msgSender());
         }
         uint256 riddleIndex = uint256(foundRiddleIndex);
         if (riddleIndex < riddles.length - 1) {

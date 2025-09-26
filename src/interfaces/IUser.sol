@@ -2,8 +2,9 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IRiddle} from "./IRiddle.sol";
+
 import {Register} from "../Register.sol";
-import {Riddle} from "../Riddle.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
@@ -54,7 +55,7 @@ interface IUser {
      * @param riddle Riddle to find
      * @return riddleIndex Riddle index in riddles array
      */
-    function indexOf(Riddle riddle) external view returns (int256 riddleIndex);
+    function indexOf(IRiddle riddle) external view returns (int256 riddleIndex);
 
     /**
      * @dev Get nick as string
@@ -66,7 +67,7 @@ interface IUser {
 
     function registerAddress() external view returns (address payable);
 
-    function riddles(uint256) external view returns (Riddle);
+    function riddles(uint256) external view returns (IRiddle);
 
     function index() external view returns (uint32);
 
@@ -90,7 +91,7 @@ interface IUser {
      * @dev Remove riddle
      * @param riddle Riddle to remove
      */
-    function remove(Riddle riddle) external;
+    function remove(IRiddle riddle) external;
 
     /**
      * @dev Conversion of registerAddress to Register contract
@@ -103,5 +104,5 @@ interface IUser {
      * @param statement Riddle statement
      * @param encryptedSolution Encrypted solution
      */
-    function commit(string calldata statement, uint256 encryptedSolution) external returns (Riddle);
+    function commit(string calldata statement, uint256 encryptedSolution) external returns (IRiddle);
 }

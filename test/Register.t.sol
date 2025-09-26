@@ -5,11 +5,12 @@ pragma solidity 0.8.28;
 import {Test, console} from "forge-std/Test.sol";
 
 import {IUser} from "../src/interfaces/IUser.sol";
+import {IRiddle} from "../src/interfaces/IRiddle.sol";
+
 import {Payment} from "../src/structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
-import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {Utils} from "src/Utils.sol";
@@ -305,9 +306,9 @@ contract RegisterTest is Test {
 
     function test_removeRiddle() public {
         IUser user = registerProxy.registerMeAs("user");
-        Riddle riddle1 = user.commit("I am superman #1!", 101);
-        Riddle riddle2 = user.commit("I am superman #2!", 101);
-        Riddle riddle3 = user.commit("I am superman #3!", 101);
+        IRiddle riddle1 = user.commit("I am superman #1!", 101);
+        IRiddle riddle2 = user.commit("I am superman #2!", 101);
+        IRiddle riddle3 = user.commit("I am superman #3!", 101);
 
         assertEq(3, registerProxy.totalRiddles());
         assertEq(3, user.totalRiddles());
@@ -316,7 +317,7 @@ contract RegisterTest is Test {
         assertEq(2, riddle3.index());
 
         vm.expectEmit(true, true, false, true);
-        emit Riddle.RiddleRemoved(address(user), address(riddle2), 2);
+        emit IRiddle.RiddleRemoved(address(user), address(riddle2), 2);
         vm.prank(USER_ADMIN);
         registerProxy.remove(address(riddle2));
 

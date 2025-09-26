@@ -31,126 +31,10 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
 
     Guess[] internal guesses;
 
-    /**
-     * @dev Riddle already registered
-     * @param riddleId Found riddle id
-     * @param userNick Found riddle user nick
-     * @param riddleIndex Found riddle register index
-     */
-    error RiddleAlreadyRegistered(uint32 riddleId, string userNick, uint32 riddleIndex);
-
-    /**
-     * @dev Owner of the Riddle cannot guess his own nick
-     * @param riddleId Riddle id
-     * @param guessSender Guess sender address
-     */
-    error OwnerCannotGuess(uint32 riddleId, address guessSender);
-
-    /**
-     * @dev Guess of this sender already exists
-     * @param riddleId Riddle id
-     * @param guessSender Guess sender address
-     * @param credo Guess credo/noncredo
-     * @param bet Guess bet value
-     */
-    error GuessOfSenderAlreadyExists(uint32 riddleId, address guessSender, bool credo, uint256 bet);
-
-    /**
-     * @dev Riddle is not registered
-     * @param riddleId Riddle id
-     * @param riddleAddress Riddle contract address
-     * @param msgSender Message sender address
-     */
-    error RiddleIsNotRegistered(uint32 riddleId, address riddleAddress, address msgSender);
-
-    /**
-     * @dev Riddle already revealed
-     * @param riddleId Riddle id
-     * @param riddleAddress Riddle contract address
-     * @param msgSender Message sender address
-     */
-    error RiddleAlreadyRevealed(uint32 riddleId, address riddleAddress, address msgSender);
-
-    /**
-     * @dev Guess period not finished yet (revelation too early)
-     * @param riddleId Riddle id
-     * @param blockNumber Current block number
-     * @param guessDeadline Guess deadline (when revelation will be possible)
-     */
-    error GuessPeriodNotFinished(uint32 riddleId, uint256 blockNumber, uint256 guessDeadline);
-
-    /**
-     * @dev Payment error
-     * @param riddleAddress Riddle contract address
-     * @param riddleId Riddle id
-     * @param receiverAddress Address of receiving account
-     * @param amount Value of reward
-     */
-    error PaymentError(address riddleAddress, uint32 riddleId, address receiverAddress, uint256 amount);
-
-    /**
-     * @dev Riddle successfully registered
-     * @param userAddress User contract address
-     * @param riddleAddress Riddle contract address
-     * @param id Riddle id
-     * @param statementHash Riddle statement hash
-     */
-    event RiddleRegistered(
-        address indexed userAddress, address indexed riddleAddress, uint32 id, bytes32 statementHash
-    );
-
-    /**
-     * @dev Riddle successfully removed
-     * @param userAddress User contract address
-     * @param riddleAddress Riddle contract address
-     * @param id Riddle id
-     */
-    event RiddleRemoved(address indexed userAddress, address indexed riddleAddress, uint32 id);
-
-    /**
-     * @dev Riddle guess successfully registered
-     * @param riddleAddress Riddle contract address
-     * @param guessSender Guess sender address
-     * @param id Riddle id
-     * @param credo Guess credo/noncredo
-     * @param bet Placed bet value
-     */
-    event GuessRegistered(
-        address indexed riddleAddress, address indexed guessSender, uint32 id, bool credo, uint256 bet
-    );
-
-    /**
-     * @dev Riddle reward payed
-     * @param riddleAddress Riddle contract address
-     * @param beneficiaryAddress Beneficiary address
-     * @param amount Payed amount
-     */
-    event RewardPayed(address indexed riddleAddress, address indexed beneficiaryAddress, uint256 amount);
-
-    /**
-     * @dev Sponsor payment received
-     * @param riddleAddress Riddle contract address
-     * @param paymentSender Payment sender address
-     * @param id Riddle id
-     * @param amount Payment amount
-     */
-    event SponsorPaymentReceived(
-        address indexed riddleAddress, address indexed paymentSender, uint32 id, uint256 amount
-    );
-
     constructor() {
         _disableInitializers();
     }
 
-    /**
-     * @dev Initializable implementation
-     * @param initialOwner Ownable implementation
-     * @param _id Identifier
-     * @param _index Index in Register
-     * @param _user User contract
-     * @param _statement Riddle statement
-     * @param _encryptedSolution Encrypted solution
-     */
     function initialize(
         address initialOwner,
         uint32 _id,
@@ -158,7 +42,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         IUser _user,
         string calldata _statement,
         uint256 _encryptedSolution
-    ) external initializer {
+    ) external override initializer {
         __Ownable_init(initialOwner);
         id = _id;
         index = _index;
@@ -181,19 +65,10 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         _;
     }
 
-    /**
-     * @dev Set index of riddle (should be implemented with onlyForUser modifier)
-     * @param _index New index value
-     */
     function setIndex(uint32 _index) external virtual override onlyForRegister {
         index = _index;
     }
 
-    /**
-     * @dev Register the attempt to guess the riddle
-     * @param credo Credo/NonCredo
-     * @return _guess Registered guess attempt
-     */
     function guess(bool credo) external payable override returns (Guess memory _guess) {
         address msgSender = _msgSender();
         if (revealed) {
@@ -220,11 +95,6 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         return _guess;
     }
 
-    /**
-     * @dev Find guess attempt for specified account
-     * @param sender Guess sender account
-     * @return _guess Registered guess attempt
-     */
     function guessOf(address sender) external view virtual override returns (Guess memory _guess) {
         _guess = Guess(address(0), false, 0);
         for (uint256 i = 0; i < guesses.length; i++) {
@@ -236,11 +106,6 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         return _guess;
     }
 
-    /**
-     * @dev Reveal solution of the riddle
-     * @param userSecretKey User secret key
-     * @return solution Is the riddle statement true? (riddle author's point of view)
-     */
     function reveal(string calldata userSecretKey) external override onlyOwner returns (bool solution) {
         address msgSender = _msgSender();
         Register register = user.register();
@@ -309,18 +174,12 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         }
     }
 
-    /**
-     * @dev In finalization process Riddle contract pays all its balance and stops further operation
-     */
     function finalize() external onlyForRegister {
         shareBalance(true, true);
         delete guesses;
         revealed = true;
     }
 
-    /**
-     * @dev Remove this contract from Register (should be implemented with onlyOwner modifier)
-     */
     function remove() external virtual override onlyOwner {
         user.register().removeMe();
     }
@@ -334,15 +193,22 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
     }
 
     /**
+     * @dev Necessary override
+     */
+    function owner() public view virtual override(OwnableUpgradeable, IRiddle) returns (address) {
+        return OwnableUpgradeable.owner();
+    }
+
+    /**
      * @dev To receive sponsor payments (no guess)
      */
     receive() external payable override {
         emit SponsorPaymentReceived(address(this), _msgSender(), id, msg.value);
     }
+
     /**
      * @dev Override of OwnableUpgradeable: throws if the sender is not the owner and not the master User contract
      */
-
     function _checkOwner() internal view virtual override {
         address msgSender = _msgSender();
         if (msgSender != owner() && msgSender != address(user)) {

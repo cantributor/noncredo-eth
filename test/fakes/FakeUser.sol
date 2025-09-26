@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 
 import {console} from "forge-std/Test.sol";
 
+import {IRiddle} from "../../src/interfaces/IRiddle.sol";
 import {IUser} from "../../src/interfaces/IUser.sol";
 
-import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -24,7 +24,7 @@ contract FakeUser is IUser, Ownable, ERC165 {
     ShortString public nick;
     uint32 public index;
     address payable public registerAddress;
-    Riddle[] public riddles;
+    IRiddle[] public riddles;
 
     constructor(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
         Ownable(initialOwner)
@@ -42,16 +42,16 @@ contract FakeUser is IUser, Ownable, ERC165 {
         return Ownable.owner();
     }
 
-    function commit(string calldata statement, uint256 encryptedSolution) external virtual override returns (Riddle) {
+    function commit(string calldata statement, uint256 encryptedSolution) external virtual override returns (IRiddle) {
         console.log("Just to escape compiler warning about variables not used", statement, encryptedSolution);
-        return Riddle(payable(0));
+        return IRiddle(payable(0));
     }
 
     function totalRiddles() external view virtual override returns (uint32) {
         return 0;
     }
 
-    function indexOf(Riddle) external view virtual returns (int256) {
+    function indexOf(IRiddle) external view virtual returns (int256) {
         return -1;
     }
 
@@ -69,7 +69,7 @@ contract FakeUser is IUser, Ownable, ERC165 {
         Register(registerAddress).removeMe();
     }
 
-    function remove(Riddle riddle) external virtual {}
+    function remove(IRiddle riddle) external virtual {}
 
     function register() external virtual override returns (Register) {
         return Register(registerAddress);

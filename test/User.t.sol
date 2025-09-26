@@ -3,10 +3,10 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {IRiddle} from "../src/interfaces/IRiddle.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
-import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 
@@ -76,13 +76,13 @@ contract UserTest is Test {
 
     function test_remove_Successful() public {
         IUser user = registerProxy.registerMeAs("user"); // owner: USER
-        Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
+        IRiddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
         assertEq(1, registerProxy.totalUsers());
         assertEq(1, registerProxy.totalRiddles());
         vm.prank(USER, USER);
         vm.expectEmit(true, true, false, true);
-        emit Riddle.RiddleRemoved(address(user), address(riddle), 1);
+        emit IRiddle.RiddleRemoved(address(user), address(riddle), 1);
         vm.expectEmit(true, true, true, false);
         emit IUser.UserRemoved(USER, "user", USER);
         user.remove();
@@ -105,7 +105,7 @@ contract UserTest is Test {
 
     function test_RevertWhen_NotRegisterCalls() public {
         IUser user = registerProxy.registerMeAs("user");
-        Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
+        IRiddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
         vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
         user.setIndex(666);
@@ -153,11 +153,11 @@ contract UserTest is Test {
         assertEq(0, registerProxy.totalRiddles());
 
         vm.expectEmit(true, false, false, true);
-        emit Riddle.RiddleRegistered(address(user1), address(0), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
+        emit IRiddle.RiddleRegistered(address(user1), address(0), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
 
         uint256 currentBlockNumber = block.number;
         console.log("Current block number", currentBlockNumber);
-        Riddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
+        IRiddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
         assertEq(1, registerProxy.totalRiddles());
         assertEq(USER, riddle1.owner());
         assertEq(TYPICAL_RIDDLE_STATEMENT, riddle1.statement());
@@ -168,7 +168,7 @@ contract UserTest is Test {
 
         vm.startPrank(OWNER);
         IUser user2 = registerProxy.registerMeAs("user2");
-        Riddle riddle2 = user2.commit("I am Superman", 777);
+        IRiddle riddle2 = user2.commit("I am Superman", 777);
         vm.stopPrank();
 
         assertEq(2, registerProxy.totalRiddles());
@@ -190,7 +190,7 @@ contract UserTest is Test {
 
         user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
 
-        vm.expectRevert(abi.encodeWithSelector(Riddle.RiddleAlreadyRegistered.selector, 1, "user1", 0));
+        vm.expectRevert(abi.encodeWithSelector(IRiddle.RiddleAlreadyRegistered.selector, 1, "user1", 0));
         vm.prank(OWNER);
         user2.commit(TYPICAL_RIDDLE_STATEMENT, 777);
 
@@ -199,12 +199,12 @@ contract UserTest is Test {
 
     function test_indexOf() public {
         IUser user1 = registerProxy.registerMeAs("user1");
-        Riddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 101);
-        Riddle riddle2 = user1.commit("I am superman!", 101);
+        IRiddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 101);
+        IRiddle riddle2 = user1.commit("I am superman!", 101);
 
         vm.startPrank(OWNER);
         IUser user2 = registerProxy.registerMeAs("user2");
-        Riddle riddle3 = user2.commit("I am Superman", 101);
+        IRiddle riddle3 = user2.commit("I am Superman", 101);
 
         assertEq(0, user1.indexOf(riddle1));
         assertEq(1, user1.indexOf(riddle2));
