@@ -3,21 +3,20 @@ include .env
 build:
 	forge fmt && forge build
 
-build-with-optimization:
+optimized-build:
 	forge fmt && forge clean && forge cache clean && forge build --optimize --optimizer-runs 100 --via-ir --sizes
 
 test: build
 	forge test
 
-test-with-optimization: build-with-optimization
-	forge test
-
 anvil-deploy: test
 	forge script script/Deploy.s.sol:DeployScript --rpc-url anvil --broadcast -v \
-      --private-key ${ANVIL_OWNER_PRIVATE_KEY}
+	  --optimize --optimizer-runs 100 \
+	  --private-key ${ANVIL_OWNER_PRIVATE_KEY}
 
-sepolia-deploy: test-with-optimization
+sepolia-deploy: test
 	forge script script/Deploy.s.sol:DeployScript --rpc-url sepolia --broadcast -vv --verify \
+	  --optimize --optimizer-runs 100 \
       --private-key ${SOLIDITY_STUDENT_PRIVATE_KEY}
 
 anvil-create-users: build
