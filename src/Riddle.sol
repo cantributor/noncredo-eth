@@ -3,9 +3,11 @@
 pragma solidity 0.8.28;
 
 import {Guess} from "./structs/Guess.sol";
-import {Register} from "./Register.sol";
+
+import {IRegister} from "./interfaces/IRegister.sol";
 import {IRiddle} from "./interfaces/IRiddle.sol";
 import {IUser} from "./interfaces/IUser.sol";
+
 import {Utils} from "./Utils.sol";
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -50,7 +52,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         statement = _statement;
         encryptedSolution = _encryptedSolution;
 
-        Register reg = user.register();
+        IRegister reg = user.register();
         guessDeadline = block.number + reg.guessDurationBlocks();
         revealDeadline = guessDeadline + reg.revealDurationBlocks();
     }
@@ -60,7 +62,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
      */
     modifier onlyForRegister() {
         if (msg.sender != user.registerAddress()) {
-            revert Register.OnlyRegisterMayCallThis(msg.sender);
+            revert IRegister.OnlyRegisterMayCallThis(msg.sender);
         }
         _;
     }
@@ -74,7 +76,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         if (revealed) {
             revert RiddleAlreadyRevealed(id, address(this), msgSender);
         }
-        Register register = user.register();
+        IRegister register = user.register();
         if (register.paused()) {
             revert PausableUpgradeable.EnforcedPause();
         }
@@ -108,7 +110,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
 
     function reveal(string calldata userSecretKey) external override onlyOwner returns (bool solution) {
         address msgSender = _msgSender();
-        Register register = user.register();
+        IRegister register = user.register();
         if (register.paused()) {
             revert PausableUpgradeable.EnforcedPause();
         }
@@ -131,7 +133,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
      * @param solution Riddle solution (true/false)
      */
     function shareBalance(bool rollback, bool solution) internal {
-        Register register = user.register();
+        IRegister register = user.register();
         uint256 winnerBetsSum = 0;
         for (uint32 i = 0; i < guesses.length; i++) {
             if (rollback || guesses[i].credo == solution) winnerBetsSum += guesses[i].bet;

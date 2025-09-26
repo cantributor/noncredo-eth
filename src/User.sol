@@ -2,11 +2,11 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
-import {IUser} from "./interfaces/IUser.sol";
+import {IRegister} from "./interfaces/IRegister.sol";
 import {IRiddle} from "./interfaces/IRiddle.sol";
+import {IUser} from "./interfaces/IUser.sol";
 
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
-import {Register} from "./Register.sol";
 import {Utils} from "./Utils.sol";
 
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -46,7 +46,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      */
     modifier onlyForRegister() {
         if (msg.sender != registerAddress) {
-            revert Register.OnlyRegisterMayCallThis(msg.sender);
+            revert IRegister.OnlyRegisterMayCallThis(msg.sender);
         }
         _;
     }
@@ -59,7 +59,7 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         returns (IRiddle riddle)
     {
         Utils.validateRiddle(statement);
-        Register reg = this.register();
+        IRegister reg = this.register();
         AccessManagedBeaconHolder riddleBeaconHolder = reg.riddleBeaconHolder();
         BeaconProxy riddleBeaconProxy = new BeaconProxy(
             address(riddleBeaconHolder.beacon()),
@@ -119,8 +119,8 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
         riddles.pop();
     }
 
-    function register() public virtual override returns (Register) {
-        return Register(registerAddress);
+    function register() public virtual override returns (IRegister) {
+        return IRegister(registerAddress);
     }
 
     /**

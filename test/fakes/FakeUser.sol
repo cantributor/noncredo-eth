@@ -4,10 +4,9 @@ pragma solidity 0.8.28;
 
 import {console} from "forge-std/Test.sol";
 
+import {IRegister} from "../../src/interfaces/IRegister.sol";
 import {IRiddle} from "../../src/interfaces/IRiddle.sol";
 import {IUser} from "../../src/interfaces/IUser.sol";
-
-import {Register} from "src/Register.sol";
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -66,13 +65,13 @@ contract FakeUser is IUser, Ownable, ERC165 {
     function goodbye() external virtual override {}
 
     function remove() external virtual override {
-        Register(registerAddress).removeMe();
+        IRegister(registerAddress).removeMe();
     }
 
     function remove(IRiddle riddle) external virtual {}
 
-    function register() external virtual override returns (Register) {
-        return Register(registerAddress);
+    function register() external virtual override returns (IRegister) {
+        return IRegister(registerAddress);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {

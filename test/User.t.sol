@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {IRegister} from "../src/interfaces/IRegister.sol";
 import {IRiddle} from "../src/interfaces/IRiddle.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
-import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 
 import {Utils} from "src/Utils.sol";
@@ -23,7 +23,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 
 contract UserTest is Test {
     IAccessManager private accessManager;
-    Register private registerProxy;
+    IRegister private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
 
     address private constant OWNER = address(1);
@@ -107,13 +107,13 @@ contract UserTest is Test {
         IUser user = registerProxy.registerMeAs("user");
         IRiddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
-        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
         user.setIndex(666);
 
-        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
         user.goodbye();
 
-        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
         user.remove(riddle);
     }
 

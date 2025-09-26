@@ -4,14 +4,14 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
-import {IUser} from "../src/interfaces/IUser.sol";
+import {IRegister} from "../src/interfaces/IRegister.sol";
 import {IRiddle} from "../src/interfaces/IRiddle.sol";
+import {IUser} from "../src/interfaces/IUser.sol";
 
 import {Payment} from "../src/structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
-import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 import {Utils} from "src/Utils.sol";
 
@@ -37,8 +37,8 @@ import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 contract RegisterTest is Test {
     IAccessManager private accessManager;
     ERC2771Forwarder private erc2771Forwarder;
-    Register private registerImpl;
-    Register private registerProxy;
+    IRegister private registerImpl;
+    IRegister private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
     AccessManagedBeaconHolder private riddleBeaconHolder;
 
@@ -52,7 +52,7 @@ contract RegisterTest is Test {
     address payable private immutable USER = payable(address(this));
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
-    Register private registerV2;
+    IRegister private registerV2;
 
     function setUp() public {
         vm.label(OWNER, "OWNER");
@@ -156,17 +156,17 @@ contract RegisterTest is Test {
     }
 
     function test_RevertWhen_NotFound() public {
-        vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, USER));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, USER));
         (bool s1,) = address(registerProxy).call(abi.encodeWithSignature("me()"));
         assertTrue(s1);
 
         vm.startPrank(address(USER_ADMIN));
 
-        vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, USER));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, USER));
         (bool s2,) = address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
         assertTrue(s2);
 
-        vm.expectRevert(abi.encodeWithSelector(Register.NickNotRegistered.selector, "user"));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.NickNotRegistered.selector, "user"));
         (bool s3,) = address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "user"));
         assertTrue(s3);
 
@@ -232,10 +232,10 @@ contract RegisterTest is Test {
         util_RegisterAccount(USER, "user");
         util_RegisterAccount(OWNER, "owner");
 
-        vm.expectRevert(abi.encodeWithSelector(Register.NickAlreadyRegistered.selector, "user"));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.NickAlreadyRegistered.selector, "user"));
         util_RegisterAccount(USER, "user");
 
-        vm.expectRevert(abi.encodeWithSelector(Register.AccountAlreadyRegistered.selector, USER));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.AccountAlreadyRegistered.selector, USER));
         util_RegisterAccount(USER, "user2");
     }
 
@@ -287,10 +287,10 @@ contract RegisterTest is Test {
 
         assertEq(2, registerProxy.totalUsers());
 
-        vm.expectRevert(abi.encodeWithSelector(Register.AccountNotRegistered.selector, address(102)));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, address(102)));
         registerProxy.userOf(address(102));
 
-        vm.expectRevert(abi.encodeWithSelector(Register.NickNotRegistered.selector, "user2"));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.NickNotRegistered.selector, "user2"));
         registerProxy.userOf("user2");
 
         string[] memory expectedNicks = new string[](2);
@@ -336,7 +336,7 @@ contract RegisterTest is Test {
     function test_removeMe_RevertWhen_IllegalCaller() public {
         registerProxy.registerMeAs("user");
 
-        vm.expectRevert(abi.encodeWithSelector(Register.IllegalActionCall.selector, "remove", USER, USER, OWNER));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.IllegalActionCall.selector, "remove", USER, USER, OWNER));
         vm.prank(USER, OWNER);
         registerProxy.removeMe();
     }
@@ -352,7 +352,7 @@ contract RegisterTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                Register.IllegalActionCall.selector, "remove", address(fakeUser), address(fakeUser), BAD_GUY
+                IRegister.IllegalActionCall.selector, "remove", address(fakeUser), address(fakeUser), BAD_GUY
             )
         );
         fakeUser.remove();
@@ -364,7 +364,7 @@ contract RegisterTest is Test {
 
     function test_withdraw_RevertWhen_RegisterBalanceIsEmpty() public {
         vm.prank(FINANCE_ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(Register.RegisterBalanceIsEmpty.selector, USER));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.RegisterBalanceIsEmpty.selector, USER));
 
         registerProxy.withdraw(USER);
     }
@@ -375,7 +375,7 @@ contract RegisterTest is Test {
         assertEq(0, registerProxy.paymentsArray().length);
 
         vm.expectEmit(true, true, false, true);
-        emit Register.PaymentReceived(USER, 0, 1000);
+        emit IRegister.PaymentReceived(USER, 0, 1000);
         (bool success,) = payable(registerProxy).call{value: 1000}("");
         assertTrue(success);
 
@@ -389,7 +389,7 @@ contract RegisterTest is Test {
 
         vm.prank(FINANCE_ADMIN);
         vm.expectEmit(true, true, false, true);
-        emit Register.Withdrawal(USER, FINANCE_ADMIN, 1000);
+        emit IRegister.Withdrawal(USER, FINANCE_ADMIN, 1000);
         registerProxy.withdraw(USER);
 
         assertEq(0, payable(registerProxy).balance);
@@ -402,7 +402,7 @@ contract RegisterTest is Test {
         ERC2771ForwarderUpgradeable.ForwardRequestData memory request = ERC2771ForwarderUpgradeable.ForwardRequestData({
             from: SIGNER,
             to: address(registerProxy),
-            data: abi.encodeCall(Register.registerMeAs, ("signer")),
+            data: abi.encodeCall(IRegister.registerMeAs, ("signer")),
             value: 0,
             gas: 1000000,
             deadline: uint48(block.timestamp + 1),
@@ -424,7 +424,7 @@ contract RegisterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(UUPSUpgradeable.UUPSUnauthorizedCallContext.selector));
         registerImpl.upgradeToAndCall(
             address(registerV2),
-            abi.encodeCall(Register.initialize, (address(accessManager), userBeaconHolder, riddleBeaconHolder))
+            abi.encodeCall(IRegister.initialize, (address(accessManager), userBeaconHolder, riddleBeaconHolder))
         );
     }
 
@@ -439,7 +439,7 @@ contract RegisterTest is Test {
 
     function util_RegisterAccount(address account, string memory nick) private returns (IUser user) {
         vm.prank(account);
-        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeCall(Register.registerMeAs, nick));
+        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeCall(IRegister.registerMeAs, nick));
         return util_ResultAsUser(success, result);
     }
 

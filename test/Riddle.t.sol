@@ -3,14 +3,14 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
-import {IUser} from "../src/interfaces/IUser.sol";
+import {IRegister} from "../src/interfaces/IRegister.sol";
 import {IRiddle} from "../src/interfaces/IRiddle.sol";
+import {IUser} from "../src/interfaces/IUser.sol";
 
 import {Guess} from "../src/structs/Guess.sol";
 import {Payment} from "../src/structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
-import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
 
 import {Utils} from "src/Utils.sol";
@@ -27,7 +27,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 
 contract RiddleTest is Test {
     IAccessManager private accessManager;
-    Register private registerProxy;
+    IRegister private registerProxy;
     AccessManagedBeaconHolder private riddleBeaconHolder;
 
     address private constant OWNER = address(1);
@@ -104,10 +104,10 @@ contract RiddleTest is Test {
     function test_RevertWhen_NotRegisterCalls() public {
         IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
 
-        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
         riddle.setIndex(666);
 
-        vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
+        vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
         riddle.finalize();
     }
 
@@ -140,7 +140,7 @@ contract RiddleTest is Test {
 
         vm.prank(GUESSING_NOT_REGISTERED);
         vm.expectRevert(
-            abi.encodeWithSelector(Register.AccountNotRegistered.selector, address(GUESSING_NOT_REGISTERED))
+            abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, address(GUESSING_NOT_REGISTERED))
         );
         riddle.guess(true);
     }
@@ -273,7 +273,7 @@ contract RiddleTest is Test {
         vm.expectEmit(true, true, false, true);
         emit IRiddle.RewardPayed(address(riddle), RIDDLING, 90);
         vm.expectEmit(true, true, false, true);
-        emit Register.PaymentReceived(address(riddle), 1, 910);
+        emit IRegister.PaymentReceived(address(riddle), 1, 910);
         vm.expectEmit(true, true, false, true);
         emit IRiddle.RewardPayed(address(riddle), payable(registerProxy), 910);
 

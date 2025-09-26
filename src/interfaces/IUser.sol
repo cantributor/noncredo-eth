@@ -2,9 +2,8 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IRegister} from "./IRegister.sol";
 import {IRiddle} from "./IRiddle.sol";
-
-import {Register} from "../Register.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
@@ -97,7 +96,7 @@ interface IUser {
      * @dev Conversion of registerAddress to Register contract
      * @return Register contract
      */
-    function register() external returns (Register);
+    function register() external returns (IRegister);
 
     /**
      * @dev Commit new Riddle contract

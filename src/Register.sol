@@ -2,6 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IRegister} from "./interfaces/IRegister.sol";
 import {IRiddle} from "./interfaces/IRiddle.sol";
 import {IUser} from "./interfaces/IUser.sol";
 import {Payment} from "./structs/Payment.sol";
@@ -22,12 +23,19 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable//utils/Pa
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import {IRegister} from "./interfaces/IRegister.sol";
 
 /**
  * @title Register
  * @dev Main register contract
  */
-contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUpgradeable, PausableUpgradeable {
+contract Register is
+    IRegister,
+    AccessManagedUpgradeable,
+    ERC2771ContextUpgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable
+{
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {
         _disableInitializers();
@@ -54,85 +62,6 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     Payment[] internal payments;
 
-    /**
-     * @dev Trying to get unregistered account
-     * @param account Unregistered account
-     */
-    error AccountNotRegistered(address account);
-
-    /**
-     * @dev Trying to get unregistered nickname user
-     * @param nick Unregistered nick
-     */
-    error NickNotRegistered(string nick);
-
-    /**
-     * @dev Trying to get not registered riddle statement
-     * @param statement Not found statement
-     */
-    error RiddleStatementNotRegistered(string statement);
-
-    /**
-     * @dev Nick already registered
-     * @param nick Already registered nick
-     */
-    error NickAlreadyRegistered(string nick);
-
-    /**
-     * @dev Account already registered
-     * @param account Already registered account
-     */
-    error AccountAlreadyRegistered(address account);
-
-    /**
-     * @dev Action call for illegal object or by illegal object
-     * @param action Action called
-     * @param object Object of action
-     * @param msgSender Message sender
-     * @param txOrigin Transaction origin
-     */
-    error IllegalActionCall(string action, address object, address msgSender, address txOrigin);
-
-    /**
-     * @dev Trying to call some function that should be called only by Register contract
-     * @param illegalCaller Illegal caller
-     */
-    error OnlyRegisterMayCallThis(address illegalCaller);
-
-    /**
-     * @dev Trying to withdraw funds with empty Register balance
-     * @param beneficiary Beneficiary address
-     */
-    error RegisterBalanceIsEmpty(address beneficiary);
-
-    /**
-     * @dev Withdrawal error
-     * @param beneficiary Beneficiary address
-     */
-    error WithdrawalError(address beneficiary);
-
-    /**
-     * @dev Payment received
-     * @param paymentSender Payment sender address
-     * @param riddleId Riddle id
-     * @param amount Payment amount
-     */
-    event PaymentReceived(address indexed paymentSender, uint32 indexed riddleId, uint256 amount);
-
-    /**
-     * @dev Withdrawal of register funds with payments array cleaning
-     * @param beneficiary Beneficiary address
-     * @param withdrawer Withdrawer address
-     * @param amount Amount of funds withdrawn
-     */
-    event Withdrawal(address indexed beneficiary, address indexed withdrawer, uint256 amount);
-
-    /**
-     * @dev Initializable implementation
-     * @param _initialAuthority Access manager
-     * @param _userBeaconHolder AccessManagedBeaconHolder for User contract
-     * @param _riddleBeaconHolder AccessManagedBeaconHolder for Riddle contract
-     */
     function initialize(
         address _initialAuthority,
         AccessManagedBeaconHolder _userBeaconHolder,
@@ -148,60 +77,41 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         riddlingRewardPercent = 10;
     }
 
-    /**
-     * @dev Get user of account
-     * @param account User account
-     * @return user of account
-     */
     function userOf(address account) external virtual returns (IUser) {
         IUser foundUser = userByAccount[account];
         if (address(foundUser) == address(0)) {
-            revert AccountNotRegistered(account);
+            revert IRegister.AccountNotRegistered(account);
         }
         return foundUser;
     }
 
-    /**
-     * @dev Get user of nick
-     * @param nick Account nick
-     * @return user
-     */
     function userOf(string memory nick) external virtual returns (IUser) {
         ShortString nickShortString = ShortStrings.toShortString(nick);
         IUser user = userByNick[nickShortString];
         if (address(user) == address(0)) {
-            revert NickNotRegistered(nick);
+            revert IRegister.NickNotRegistered(nick);
         }
         return user;
     }
 
-    /**
-     * @dev Get user of current account
-     * @return user of current account
-     */
     function me() external view virtual returns (IUser) {
         IUser foundUser = userByAccount[_msgSender()];
         if (address(foundUser) == address(0)) {
-            revert AccountNotRegistered(_msgSender());
+            revert IRegister.AccountNotRegistered(_msgSender());
         }
         return foundUser;
     }
 
-    /**
-     * @dev Register user for sender account with specific nickname
-     * @param nick Nick for registration
-     * @return user Registered user
-     */
     function registerMeAs(string calldata nick) external virtual whenNotPaused returns (IUser user) {
         ShortString nickShortString = Utils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
-            revert NickAlreadyRegistered(nick);
+            revert IRegister.NickAlreadyRegistered(nick);
         }
         address msgSender = _msgSender();
         address foundByAccount = address(userByAccount[msgSender]);
         if (foundByAccount != address(0)) {
-            revert AccountAlreadyRegistered(msgSender);
+            revert IRegister.AccountAlreadyRegistered(msgSender);
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
             address(userBeaconHolder.beacon()),
@@ -222,12 +132,12 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     function removeUser(IUser user) internal virtual {
         address foundByNick = address(userByNick[user.nick()]);
         if (foundByNick == address(0)) {
-            revert NickNotRegistered(user.nickString());
+            revert IRegister.NickNotRegistered(user.nickString());
         }
         address userOwner = user.owner();
         address foundByAccount = address(userByAccount[userOwner]);
         if (foundByAccount == address(0)) {
-            revert AccountNotRegistered(userOwner);
+            revert IRegister.AccountNotRegistered(userOwner);
         }
         delete userByNick[user.nick()];
         delete userByAccount[userOwner];
@@ -249,7 +159,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
         IRiddle foundByStatement = riddleByStatement[statementHash];
         if (address(foundByStatement) == address(0)) {
-            revert RiddleStatementNotRegistered(riddle.statement());
+            revert IRegister.RiddleStatementNotRegistered(riddle.statement());
         }
         delete riddleByStatement[statementHash];
         // check for existence in riddles already done in addressIsRegisteredRiddle(payable)
@@ -274,36 +184,22 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         } else if (addressIsRegisteredRiddle(payable(contractAddress))) {
             removeRiddle(IRiddle(payable(contractAddress)));
         } else {
-            revert IllegalActionCall("remove", contractAddress, _msgSender(), tx.origin);
+            revert IRegister.IllegalActionCall("remove", contractAddress, _msgSender(), tx.origin);
         }
     }
 
-    /**
-     * @dev Remove contract - restricted access function (for admins)
-     */
     function remove(address contractAddress) external virtual whenNotPaused restricted {
         removalImplementation(contractAddress);
     }
 
-    /**
-     * @dev Remove caller
-     */
     function removeMe() external virtual whenNotPaused {
         removalImplementation(_msgSender());
     }
 
-    /**
-     * @dev Get total number of users
-     * @return total number of users
-     */
     function totalUsers() external view virtual returns (uint32) {
         return uint32(users.length);
     }
 
-    /**
-     * @dev Get all nicks
-     * @return result All nicks array
-     */
     function allNicks() external view virtual returns (string[] memory result) {
         uint256 usersLength = users.length;
         result = new string[](usersLength);
@@ -313,27 +209,15 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         return result;
     }
 
-    /**
-     * @dev Riddle id generator
-     * @return Next riddle id value
-     */
     function nextRiddleId() external virtual whenNotPaused returns (uint32) {
         riddleCounter++;
         return riddleCounter;
     }
 
-    /**
-     * @dev Get total number of active riddles
-     * @return total number of active riddles
-     */
     function totalRiddles() external view virtual returns (uint32) {
         return uint32(riddles.length);
     }
 
-    /**
-     * @dev Register riddle
-     * @param riddle Riddle contract to register
-     */
     function registerRiddle(IRiddle riddle) external virtual whenNotPaused {
         bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
         IRiddle foundRiddle = riddleByStatement[statementHash];
@@ -344,18 +228,13 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         address userAddress = _msgSender();
         if (!addressIsRegisteredUser(userAddress)) {
-            revert IllegalActionCall("registerRiddle", address(riddle), userAddress, tx.origin);
+            revert IRegister.IllegalActionCall("registerRiddle", address(riddle), userAddress, tx.origin);
         }
         riddles.push(riddle);
         riddleByStatement[statementHash] = riddle;
         emit IRiddle.RiddleRegistered(address(riddle.user()), address(riddle), riddle.id(), statementHash);
     }
 
-    /**
-     * @dev Set guess & reveal duration (in blocks)
-     * @param _guessDuration New guess duration value
-     * @param _revealDuration New reveal duration value
-     */
     function setGuessAndRevealDuration(uint32 _guessDuration, uint32 _revealDuration)
         external
         virtual
@@ -367,11 +246,6 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         revealDurationBlocks = _revealDuration;
     }
 
-    /**
-     * @dev Set register & riddling rewards (in percents)
-     * @param _registerReward New register reward percent value
-     * @param _riddlingReward New riddling reward percent value
-     */
     function setRegisterAndRiddlingRewards(uint8 _registerReward, uint8 _riddlingReward)
         external
         virtual
@@ -384,10 +258,6 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         riddlingRewardPercent = _riddlingReward;
     }
 
-    /**
-     * @dev Get payments array
-     * @return payments array
-     */
     function paymentsArray() external view virtual returns (Payment[] memory) {
         return payments;
     }
@@ -451,7 +321,18 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Check if address is registered user
+     * @dev Necessary override
+     */
+    function upgradeToAndCall(address implementation, bytes memory data)
+        public
+        payable
+        override(UUPSUpgradeable, IRegister)
+    {
+        UUPSUpgradeable.upgradeToAndCall(implementation, data);
+    }
+
+    /**
+     * @dev Check if address is registered User
      */
     function addressIsRegisteredUser(address userAddress) internal view virtual returns (bool) {
         bool isUser = ERC165Checker.supportsInterface(userAddress, type(IUser).interfaceId);
@@ -464,7 +345,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     }
 
     /**
-     * @dev Check if address is registered user
+     * @dev Check if address is registered Riddle
      */
     function addressIsRegisteredRiddle(address payable riddleAddress) internal view virtual returns (bool) {
         bool isRiddle = ERC165Checker.supportsInterface(riddleAddress, type(IRiddle).interfaceId);
@@ -476,26 +357,26 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
     }
 
-    /**
-     * @dev Withdraw funds
-     * @param beneficiary Address to withdraw
-     */
     function withdraw(address payable beneficiary) external virtual whenNotPaused restricted {
         uint256 amount = address(this).balance;
         if (amount == 0) {
-            revert RegisterBalanceIsEmpty(beneficiary);
+            revert IRegister.RegisterBalanceIsEmpty(beneficiary);
         }
         (bool success,) = beneficiary.call{value: amount}("");
         if (!success) {
-            revert WithdrawalError(beneficiary);
+            revert IRegister.WithdrawalError(beneficiary);
         }
         delete payments;
-        emit Withdrawal(beneficiary, _msgSender(), amount);
+        emit IRegister.Withdrawal(beneficiary, _msgSender(), amount);
     }
 
     /**
-     * @dev Receive payment
+     * @dev Necessary override
      */
+    function paused() public view virtual override(PausableUpgradeable, IRegister) returns (bool) {
+        return PausableUpgradeable.paused();
+    }
+
     receive() external payable {
         address payable msgSender = payable(_msgSender());
         Payment memory payment;
@@ -506,6 +387,6 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
             payment = Payment(msgSender, 0, msg.value);
         }
         payments.push(payment);
-        emit PaymentReceived(payment.payer, payment.riddleId, payment.amount);
+        emit IRegister.PaymentReceived(payment.payer, payment.riddleId, payment.amount);
     }
 }
