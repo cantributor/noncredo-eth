@@ -24,6 +24,7 @@ contract FakeUser is IUser, Ownable, ERC165 {
     ShortString public nick;
     uint32 public index;
     address payable public registerAddress;
+    Riddle[] public riddles;
 
     constructor(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
         Ownable(initialOwner)
@@ -31,6 +32,14 @@ contract FakeUser is IUser, Ownable, ERC165 {
         nick = _nick;
         index = _index;
         registerAddress = _registerAddress;
+    }
+
+    function initialize(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
+        external
+    {}
+
+    function owner() public view virtual override(Ownable, IUser) returns (address) {
+        return Ownable.owner();
     }
 
     function commit(string calldata statement, uint256 encryptedSolution) external virtual override returns (Riddle) {

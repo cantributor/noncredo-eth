@@ -3,11 +3,12 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {IUser} from "../src/interfaces/IUser.sol";
+
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
-import {User} from "src/User.sol";
 
 import {Utils} from "src/Utils.sol";
 
@@ -31,7 +32,7 @@ contract UserTest is Test {
     address private constant FINANCE_ADMIN = address(0xC);
     address private immutable USER = address(this);
 
-    User private userV2Impl;
+    IUser private userV2Impl;
 
     string private constant TYPICAL_RIDDLE_STATEMENT = "I am President";
     string private constant USER_SECRET_KEY = "User's secret key";
@@ -62,7 +63,7 @@ contract UserTest is Test {
     }
 
     function test_setIndex() public {
-        User user = registerProxy.registerMeAs("user");
+        IUser user = registerProxy.registerMeAs("user");
 
         assertEq("user", user.nickString());
         assertEq(0, user.index());
@@ -74,7 +75,7 @@ contract UserTest is Test {
     }
 
     function test_remove_Successful() public {
-        User user = registerProxy.registerMeAs("user"); // owner: USER
+        IUser user = registerProxy.registerMeAs("user"); // owner: USER
         Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
         assertEq(1, registerProxy.totalUsers());
@@ -83,7 +84,7 @@ contract UserTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Riddle.RiddleRemoved(address(user), address(riddle), 1);
         vm.expectEmit(true, true, true, false);
-        emit User.UserRemoved(USER, "user", USER);
+        emit IUser.UserRemoved(USER, "user", USER);
         user.remove();
 
         assertEq(0, registerProxy.totalUsers());
@@ -91,7 +92,7 @@ contract UserTest is Test {
     }
 
     function test_RevertWhen_NotOwnerCalls() public {
-        User user = registerProxy.registerMeAs("user"); // owner: USER
+        IUser user = registerProxy.registerMeAs("user"); // owner: USER
 
         vm.prank(OWNER);
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, OWNER));
@@ -103,7 +104,7 @@ contract UserTest is Test {
     }
 
     function test_RevertWhen_NotRegisterCalls() public {
-        User user = registerProxy.registerMeAs("user");
+        IUser user = registerProxy.registerMeAs("user");
         Riddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
 
         vm.expectRevert(abi.encodeWithSelector(Register.OnlyRegisterMayCallThis.selector, this));
@@ -117,7 +118,7 @@ contract UserTest is Test {
     }
 
     function test_RevertWhen_OnPause() public {
-        User user = registerProxy.registerMeAs("user");
+        IUser user = registerProxy.registerMeAs("user");
 
         vm.prank(USER_ADMIN);
         registerProxy.pause();
@@ -133,7 +134,7 @@ contract UserTest is Test {
     }
 
     function test_commit_RevertWhen_StatementTooShortOrTooLong() public {
-        User user = registerProxy.registerMeAs("user");
+        IUser user = registerProxy.registerMeAs("user");
 
         vm.expectRevert(abi.encodeWithSelector(Utils.RiddleTooShort.selector, "I'm man", 7, 10));
         user.commit("I'm man", 777);
@@ -148,7 +149,7 @@ contract UserTest is Test {
     }
 
     function test_commit_Successful() public {
-        User user1 = registerProxy.registerMeAs("user1");
+        IUser user1 = registerProxy.registerMeAs("user1");
         assertEq(0, registerProxy.totalRiddles());
 
         vm.expectEmit(true, false, false, true);
@@ -166,7 +167,7 @@ contract UserTest is Test {
         assertEq(currentBlockNumber + Utils.MIN_DURATION * 2, riddle1.revealDeadline());
 
         vm.startPrank(OWNER);
-        User user2 = registerProxy.registerMeAs("user2");
+        IUser user2 = registerProxy.registerMeAs("user2");
         Riddle riddle2 = user2.commit("I am Superman", 777);
         vm.stopPrank();
 
@@ -182,9 +183,9 @@ contract UserTest is Test {
     }
 
     function test_commit_RevertWhen_RiddleAlreadyRegistered() public {
-        User user1 = registerProxy.registerMeAs("user1");
+        IUser user1 = registerProxy.registerMeAs("user1");
         vm.prank(OWNER);
-        User user2 = registerProxy.registerMeAs("user2");
+        IUser user2 = registerProxy.registerMeAs("user2");
         assertEq(0, registerProxy.totalRiddles());
 
         user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
@@ -197,12 +198,12 @@ contract UserTest is Test {
     }
 
     function test_indexOf() public {
-        User user1 = registerProxy.registerMeAs("user1");
+        IUser user1 = registerProxy.registerMeAs("user1");
         Riddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 101);
         Riddle riddle2 = user1.commit("I am superman!", 101);
 
         vm.startPrank(OWNER);
-        User user2 = registerProxy.registerMeAs("user2");
+        IUser user2 = registerProxy.registerMeAs("user2");
         Riddle riddle3 = user2.commit("I am Superman", 101);
 
         assertEq(0, user1.indexOf(riddle1));
@@ -219,7 +220,7 @@ contract UserTest is Test {
 
     function test_Upgrade_Successful() public {
         registerProxy.registerMeAs("user");
-        User user = registerProxy.userOf("user");
+        IUser user = registerProxy.userOf("user");
         assertEq("user", user.nickString());
 
         vm.prank(UPGRADE_ADMIN);

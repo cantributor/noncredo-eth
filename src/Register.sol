@@ -9,7 +9,6 @@ import {Payment} from "./structs/Payment.sol";
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
 import {Riddle} from "./Riddle.sol";
 import {Roles} from "./Roles.sol";
-import {User} from "./User.sol";
 import {Utils} from "./Utils.sol";
 
 import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
@@ -35,10 +34,10 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         _disableInitializers();
     }
 
-    mapping(address account => User user) internal userByAccount;
-    mapping(ShortString nick => User user) internal userByNick;
+    mapping(address account => IUser user) internal userByAccount;
+    mapping(ShortString nick => IUser user) internal userByNick;
 
-    User[] public users;
+    IUser[] public users;
 
     AccessManagedBeaconHolder public userBeaconHolder;
     AccessManagedBeaconHolder public riddleBeaconHolder;
@@ -155,8 +154,8 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param account User account
      * @return user of account
      */
-    function userOf(address account) external virtual returns (User) {
-        User foundUser = userByAccount[account];
+    function userOf(address account) external virtual returns (IUser) {
+        IUser foundUser = userByAccount[account];
         if (address(foundUser) == address(0)) {
             revert AccountNotRegistered(account);
         }
@@ -168,9 +167,9 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param nick Account nick
      * @return user
      */
-    function userOf(string memory nick) external virtual returns (User) {
+    function userOf(string memory nick) external virtual returns (IUser) {
         ShortString nickShortString = ShortStrings.toShortString(nick);
-        User user = userByNick[nickShortString];
+        IUser user = userByNick[nickShortString];
         if (address(user) == address(0)) {
             revert NickNotRegistered(nick);
         }
@@ -181,8 +180,8 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Get user of current account
      * @return user of current account
      */
-    function me() external view virtual returns (User) {
-        User foundUser = userByAccount[_msgSender()];
+    function me() external view virtual returns (IUser) {
+        IUser foundUser = userByAccount[_msgSender()];
         if (address(foundUser) == address(0)) {
             revert AccountNotRegistered(_msgSender());
         }
@@ -194,7 +193,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @param nick Nick for registration
      * @return user Registered user
      */
-    function registerMeAs(string calldata nick) external virtual whenNotPaused returns (User user) {
+    function registerMeAs(string calldata nick) external virtual whenNotPaused returns (IUser user) {
         ShortString nickShortString = Utils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
         if (foundByNick != address(0)) {
@@ -207,13 +206,13 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         BeaconProxy userBeaconProxy = new BeaconProxy(
             address(userBeaconHolder.beacon()),
-            abi.encodeCall(User.initialize, (msgSender, nickShortString, uint32(users.length), payable(this)))
+            abi.encodeCall(IUser.initialize, (msgSender, nickShortString, uint32(users.length), payable(this)))
         );
-        user = User(address(userBeaconProxy));
+        user = IUser(address(userBeaconProxy));
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         users.push(user);
-        emit User.UserRegistered(msgSender, nick);
+        emit IUser.UserRegistered(msgSender, nick);
         return user;
     }
 
@@ -221,17 +220,18 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      * @dev Remove user. Internal implementation
      * @param user User to remove
      */
-    function removeUser(User user) internal virtual {
+    function removeUser(IUser user) internal virtual {
         address foundByNick = address(userByNick[user.nick()]);
         if (foundByNick == address(0)) {
             revert NickNotRegistered(user.nickString());
         }
-        address foundByAccount = address(userByAccount[user.owner()]);
+        address userOwner = user.owner();
+        address foundByAccount = address(userByAccount[userOwner]);
         if (foundByAccount == address(0)) {
-            revert AccountNotRegistered(user.owner());
+            revert AccountNotRegistered(userOwner);
         }
         delete userByNick[user.nick()];
-        delete userByAccount[user.owner()];
+        delete userByAccount[userOwner];
         uint32 userIndex = user.index();
         if (userIndex < users.length - 1) {
             users[userIndex] = users[users.length - 1];
@@ -239,7 +239,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
         }
         users.pop();
         user.goodbye();
-        emit User.UserRemoved(user.owner(), user.nickString(), tx.origin);
+        emit IUser.UserRemoved(userOwner, user.nickString(), tx.origin);
     }
 
     /**
@@ -271,7 +271,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
      */
     function removalImplementation(address contractAddress) internal virtual {
         if (addressIsRegisteredUser(contractAddress)) {
-            removeUser(User(contractAddress));
+            removeUser(IUser(contractAddress));
         } else if (addressIsRegisteredRiddle(payable(contractAddress))) {
             removeRiddle(Riddle(payable(contractAddress)));
         } else {
@@ -457,7 +457,7 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
     function addressIsRegisteredUser(address userAddress) internal view virtual returns (bool) {
         bool isUser = ERC165Checker.supportsInterface(userAddress, type(IUser).interfaceId);
         if (isUser) {
-            User user = User(userAddress);
+            IUser user = IUser(userAddress);
             return userByAccount[user.owner()] == user;
         } else {
             return false;

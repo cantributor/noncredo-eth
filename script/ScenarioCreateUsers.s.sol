@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 
+import {IUser} from "../src/interfaces/IUser.sol";
 import {Register} from "src/Register.sol";
-import {User} from "src/User.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -32,7 +32,7 @@ contract ScenarioCreateUsers is Script {
         console.log("Total users:", registerProxy.totalUsers());
         string[] memory userNicks = registerProxy.allNicks();
         for (uint256 i = 0; i < userNicks.length; i++) {
-            User user = registerProxy.userOf(userNicks[i]);
+            IUser user = registerProxy.userOf(userNicks[i]);
             string memory owner = Strings.toHexString(uint256(uint160(user.owner())), 20);
             console.log("User", user.index(), user.nickString(), owner);
         }

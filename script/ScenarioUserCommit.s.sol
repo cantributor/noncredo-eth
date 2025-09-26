@@ -3,9 +3,10 @@ pragma solidity 0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 
+import {IUser} from "../src/interfaces/IUser.sol";
+
 import {Register} from "src/Register.sol";
 import {Riddle} from "src/Riddle.sol";
-import {User} from "src/User.sol";
 
 import {Utils} from "src/Utils.sol";
 
@@ -31,7 +32,7 @@ contract ScenarioUserCommit is Script {
         uint256 encryptedSolution = Utils.encryptSolution(statement, false, "secret");
         console.log("Encrypted solution: ", encryptedSolution);
 
-        User owner = registerProxy.userOf("owner");
+        IUser owner = registerProxy.userOf("owner");
         vm.broadcast(ownerPrivateKey);
         owner.commit(statement, encryptedSolution);
     }

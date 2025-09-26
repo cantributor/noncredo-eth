@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {IUser} from "../src/interfaces/IUser.sol";
+
 import {Guess} from "../src/structs/Guess.sol";
 import {Payment} from "../src/structs/Payment.sol";
 
@@ -10,7 +12,6 @@ import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
-import {User} from "src/User.sol";
 
 import {Utils} from "src/Utils.sol";
 
@@ -45,10 +46,10 @@ contract RiddleTest is Test {
     string private constant TYPICAL_RIDDLE_STATEMENT = "I am President";
     string private constant USER_SECRET_KEY = "User's secret key";
 
-    User private riddling;
-    User private guessing1;
-    User private guessing2;
-    User private guessing3;
+    IUser private riddling;
+    IUser private guessing1;
+    IUser private guessing2;
+    IUser private guessing3;
 
     function setUp() public {
         vm.label(OWNER, "OWNER");

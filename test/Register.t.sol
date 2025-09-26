@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import {IUser} from "../src/interfaces/IUser.sol";
 import {Payment} from "../src/structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
@@ -11,7 +12,6 @@ import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Riddle} from "src/Riddle.sol";
 import {Register} from "src/Register.sol";
 import {Roles} from "src/Roles.sol";
-import {User} from "src/User.sol";
 import {Utils} from "src/Utils.sol";
 
 import {RegisterV2} from "./upgrades/RegisterV2.sol";
@@ -82,7 +82,7 @@ contract RegisterTest is Test {
         bytes memory encodedUnauthorized =
             abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, USER);
 
-        User userToRemove = registerProxy.registerMeAs("user");
+        IUser userToRemove = registerProxy.registerMeAs("user");
         vm.expectRevert(encodedUnauthorized);
         registerProxy.remove(address(userToRemove));
 
@@ -107,7 +107,7 @@ contract RegisterTest is Test {
 
     function test_RevertWhen_OnPause() public {
         vm.prank(OWNER);
-        User owner = registerProxy.registerMeAs("owner");
+        IUser owner = registerProxy.registerMeAs("owner");
 
         vm.prank(USER_ADMIN);
         registerProxy.pause();
@@ -178,7 +178,7 @@ contract RegisterTest is Test {
 
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
-        User user = util_ResultAsUser(success, result);
+        IUser user = util_ResultAsUser(success, result);
         assertEq("user", user.nickString());
         assertEq(0, user.index());
     }
@@ -200,7 +200,7 @@ contract RegisterTest is Test {
         (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
         assertEq("user", util_ResultAsUser(success, result).nickString());
 
-        User user = registerProxy.me();
+        IUser user = registerProxy.me();
         assertEq("user", user.nickString());
     }
 
@@ -240,9 +240,9 @@ contract RegisterTest is Test {
 
     function test_registerMeAs_Successful() public {
         vm.expectEmit(true, true, false, false);
-        emit User.UserRegistered(address(USER), "user");
+        emit IUser.UserRegistered(address(USER), "user");
 
-        User user = registerProxy.registerMeAs("user");
+        IUser user = registerProxy.registerMeAs("user");
 
         assertEq("user", user.nickString());
         assertEq(0, user.index());
@@ -255,16 +255,16 @@ contract RegisterTest is Test {
         util_RegisterAccount(USER, "user");
 
         (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
-        User user = util_ResultAsUser(success, result);
+        IUser user = util_ResultAsUser(success, result);
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
         user.initialize(USER, ShortStrings.toShortString("hacker"), 666, payable(registerImpl));
     }
 
     function test_removeUser() public {
-        User user1 = util_RegisterAccount(address(101), "user1");
-        User user2 = util_RegisterAccount(address(102), "user2");
-        User user3 = util_RegisterAccount(address(103), "user3");
+        IUser user1 = util_RegisterAccount(address(101), "user1");
+        IUser user2 = util_RegisterAccount(address(102), "user2");
+        IUser user3 = util_RegisterAccount(address(103), "user3");
 
         assertEq(3, registerProxy.totalUsers());
 
@@ -279,7 +279,7 @@ contract RegisterTest is Test {
         assertEq(2, util_UserOf("user3").index());
 
         vm.expectEmit(true, true, true, false);
-        emit User.UserRemoved(address(102), "user2", USER_ADMIN);
+        emit IUser.UserRemoved(address(102), "user2", USER_ADMIN);
 
         vm.prank(USER_ADMIN, USER_ADMIN);
         registerProxy.remove(address(user2));
@@ -304,7 +304,7 @@ contract RegisterTest is Test {
     }
 
     function test_removeRiddle() public {
-        User user = registerProxy.registerMeAs("user");
+        IUser user = registerProxy.registerMeAs("user");
         Riddle riddle1 = user.commit("I am superman #1!", 101);
         Riddle riddle2 = user.commit("I am superman #2!", 101);
         Riddle riddle3 = user.commit("I am superman #3!", 101);
@@ -341,7 +341,7 @@ contract RegisterTest is Test {
     }
 
     function test_removeMe_RevertWhen_FakeUser() public {
-        User user = registerProxy.registerMeAs("user"); // owner: USER
+        IUser user = registerProxy.registerMeAs("user"); // owner: USER
         console.log("User owner:", user.owner());
         assertEq(1, registerProxy.totalUsers());
 
@@ -414,7 +414,7 @@ contract RegisterTest is Test {
 
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "signer"));
-        User user = util_ResultAsUser(success, result);
+        IUser user = util_ResultAsUser(success, result);
         assertEq("signer", user.nickString());
         assertEq(0, user.index());
     }
@@ -436,19 +436,19 @@ contract RegisterTest is Test {
         assertEq(util_getTotalUsers(), 777);
     }
 
-    function util_RegisterAccount(address account, string memory nick) private returns (User user) {
+    function util_RegisterAccount(address account, string memory nick) private returns (IUser user) {
         vm.prank(account);
         (bool success, bytes memory result) = address(registerProxy).call(abi.encodeCall(Register.registerMeAs, nick));
         return util_ResultAsUser(success, result);
     }
 
-    function util_ResultAsUser(bool success, bytes memory result) private pure returns (User) {
+    function util_ResultAsUser(bool success, bytes memory result) private pure returns (IUser) {
         assertTrue(success);
-        User user = abi.decode(result, (User));
+        IUser user = abi.decode(result, (IUser));
         return user;
     }
 
-    function util_UserOf(string memory nick) private returns (User) {
+    function util_UserOf(string memory nick) private returns (IUser) {
         (bool success, bytes memory result) =
             address(registerProxy).call(abi.encodeWithSignature("userOf(string)", nick));
         return util_ResultAsUser(success, result);
