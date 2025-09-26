@@ -32,6 +32,13 @@ contract DeployScript is Script {
         (accessManager, erc2771Forwarder, registerImpl, registerProxy, userBeaconHolder, riddleBeaconHolder) =
             createContracts(msg.sender);
 
+        console.log("AccessManager address:", address(accessManager));
+        console.log("ERC2771Forwarder address:", address(erc2771Forwarder));
+        console.log("Beacon holder address for User contract:", address(userBeaconHolder));
+        console.log("Beacon holder address for Riddle contract:", address(riddleBeaconHolder));
+        console.log("Register implementation address:", address(registerImpl));
+        console.log("Register proxy address:", address(registerProxy));
+
         grantAccessToRoles(
             address(0), accessManager, address(registerProxy), address(userBeaconHolder), address(riddleBeaconHolder)
         );
@@ -57,11 +64,9 @@ contract DeployScript is Script {
     {
         AccessManagerUpgradeable accessManagerUpgradeable = new AccessManagerUpgradeable();
         accessManagerUpgradeable.initialize(owner);
-        console.log("AccessManager address:", address(accessManagerUpgradeable));
 
         resultErc2771Forwarder = new ERC2771Forwarder();
         resultErc2771Forwarder.initialize("erc2771Forwarder");
-        console.log("ERC2771Forwarder address:", address(resultErc2771Forwarder));
 
         resultAccessManagedUserBeaconHolder = new AccessManagedBeaconHolder(address(accessManagerUpgradeable));
         address userUpgradeableBeaconAddress =
@@ -89,10 +94,6 @@ contract DeployScript is Script {
             )
         );
         resultRegisterProxy = Register(payable(registerProxyAddress));
-        console.log("Beacon holder address for User contract:", address(resultAccessManagedUserBeaconHolder));
-        console.log("Beacon holder address for Riddle contract:", address(resultAccessManagedRiddleBeaconHolder));
-        console.log("Register implementation address:", address(resultRegisterImpl));
-        console.log("Register proxy address:", address(resultRegisterProxy));
 
         return (
             accessManagerUpgradeable,
@@ -138,7 +139,7 @@ contract DeployScript is Script {
         );
 
         bytes4[] memory withdrawSelector = new bytes4[](1);
-        withdrawSelector[0] = bytes4(keccak256("withdraw()"));
+        withdrawSelector[0] = bytes4(keccak256("withdraw(address)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, withdrawSelector, Roles.FINANCE_ADMIN_ROLE);
 
         bytes4[] memory upgradeToAndCallSelector = new bytes4[](1);

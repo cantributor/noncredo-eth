@@ -103,15 +103,15 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     /**
      * @dev Trying to withdraw funds with empty Register balance
-     * @param withdrawer Address of withdrawer
+     * @param beneficiary Beneficiary address
      */
-    error RegisterBalanceIsEmpty(address withdrawer);
+    error RegisterBalanceIsEmpty(address beneficiary);
 
     /**
      * @dev Withdrawal error
-     * @param account Beneficiary address
+     * @param beneficiary Beneficiary address
      */
-    error WithdrawalError(address account);
+    error WithdrawalError(address beneficiary);
 
     /**
      * @dev Payment received
@@ -123,10 +123,11 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     /**
      * @dev Withdrawal of register funds with payments array cleaning
-     * @param account Beneficiary address
+     * @param beneficiary Beneficiary address
+     * @param withdrawer Withdrawer address
      * @param amount Amount of funds withdrawn
      */
-    event Withdrawal(address indexed account, uint256 amount);
+    event Withdrawal(address indexed beneficiary, address indexed withdrawer, uint256 amount);
 
     /**
      * @dev Initializable implementation
@@ -478,19 +479,19 @@ contract Register is AccessManagedUpgradeable, ERC2771ContextUpgradeable, UUPSUp
 
     /**
      * @dev Withdraw funds
+     * @param beneficiary Address to withdraw
      */
-    function withdraw() external virtual whenNotPaused restricted {
-        address payable beneficiary = payable(_msgSender());
+    function withdraw(address payable beneficiary) external virtual whenNotPaused restricted {
         uint256 amount = address(this).balance;
         if (amount == 0) {
             revert RegisterBalanceIsEmpty(beneficiary);
         }
-        (bool success,) = beneficiary.call{value: amount}(bytes("From NonCredo"));
+        (bool success,) = beneficiary.call{value: amount}("");
         if (!success) {
             revert WithdrawalError(beneficiary);
         }
         delete payments;
-        emit Withdrawal(beneficiary, amount);
+        emit Withdrawal(beneficiary, _msgSender(), amount);
     }
 
     /**

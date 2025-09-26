@@ -48,7 +48,7 @@ contract RegisterTest is Test {
     address private constant USER_ADMIN = address(0xB);
     address private constant FINANCE_ADMIN = address(0xC);
     address private constant BAD_GUY = address(0xF);
-    address private immutable USER = address(this);
+    address payable private immutable USER = payable(address(this));
     address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     Register private registerV2;
@@ -102,7 +102,7 @@ contract RegisterTest is Test {
         registerProxy.resume();
 
         vm.expectRevert(encodedUnauthorized);
-        registerProxy.withdraw();
+        registerProxy.withdraw(USER);
     }
 
     function test_RevertWhen_OnPause() public {
@@ -130,7 +130,7 @@ contract RegisterTest is Test {
         registerProxy.nextRiddleId();
 
         vm.expectRevert(encodedEnforcedPause);
-        registerProxy.withdraw();
+        registerProxy.withdraw(USER);
     }
 
     function test_resume_Successful() public {
@@ -363,35 +363,38 @@ contract RegisterTest is Test {
 
     function test_withdraw_RevertWhen_RegisterBalanceIsEmpty() public {
         vm.prank(FINANCE_ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(Register.RegisterBalanceIsEmpty.selector, FINANCE_ADMIN));
+        vm.expectRevert(abi.encodeWithSelector(Register.RegisterBalanceIsEmpty.selector, USER));
 
-        registerProxy.withdraw();
+        registerProxy.withdraw(USER);
     }
 
     function test_receive_withdraw_Successful() public {
+        uint256 initialBalance = USER.balance;
         assertEq(0, payable(registerProxy).balance);
         assertEq(0, registerProxy.paymentsArray().length);
 
         vm.expectEmit(true, true, false, true);
-        emit Register.PaymentReceived(address(this), 0, 1000);
+        emit Register.PaymentReceived(USER, 0, 1000);
         (bool success,) = payable(registerProxy).call{value: 1000}("");
         assertTrue(success);
 
         assertEq(1000, payable(registerProxy).balance);
+        assertEq(initialBalance - 1000, USER.balance);
         Payment[] memory payments = registerProxy.paymentsArray();
         assertEq(1, payments.length);
         assertEq(1000, payments[0].amount);
         assertEq(0, payments[0].riddleId);
-        assertEq(address(this), payments[0].payer);
+        assertEq(USER, payments[0].payer);
 
         vm.prank(FINANCE_ADMIN);
         vm.expectEmit(true, true, false, true);
-        emit Register.Withdrawal(FINANCE_ADMIN, 1000);
-        registerProxy.withdraw();
+        emit Register.Withdrawal(USER, FINANCE_ADMIN, 1000);
+        registerProxy.withdraw(USER);
 
         assertEq(0, payable(registerProxy).balance);
         assertEq(0, registerProxy.paymentsArray().length);
-        assertEq(1000, FINANCE_ADMIN.balance);
+        assertEq(0, FINANCE_ADMIN.balance);
+        assertEq(initialBalance, USER.balance);
     }
 
     function test_MetaTransaction() public {
@@ -467,5 +470,9 @@ contract RegisterTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, digest);
         request.signature = abi.encodePacked(r, s, v);
         return request;
+    }
+
+    receive() external payable {
+        console.log("RegisterTest received payment:", msg.value);
     }
 }
