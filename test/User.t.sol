@@ -8,9 +8,11 @@ import {IRiddle} from "../src/interfaces/IRiddle.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
+import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Roles} from "src/Roles.sol";
-
 import {Utils} from "src/Utils.sol";
+
+import {MetaTxUtils} from "./utils/MetaTxUtils.sol";
 
 import {UserV2} from "./upgrades/UserV2.sol";
 
@@ -18,19 +20,24 @@ import {DeployScript} from "../script/Deploy.s.sol";
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
+import {ERC2771ForwarderUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ForwarderUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 contract UserTest is Test {
     IAccessManager private accessManager;
+    ERC2771Forwarder private erc2771Forwarder;
     IRegister private registerProxy;
     AccessManagedBeaconHolder private userBeaconHolder;
+
+    uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
 
     address private constant OWNER = address(1);
     address private constant UPGRADE_ADMIN = address(0xA);
     address private constant USER_ADMIN = address(0xB);
     address private constant FINANCE_ADMIN = address(0xC);
     address private immutable USER = address(this);
+    address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     IUser private userV2Impl;
 
@@ -43,9 +50,10 @@ contract UserTest is Test {
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
         vm.label(USER_ADMIN, "USER_ADMIN");
         vm.label(FINANCE_ADMIN, "FINANCE_ADMIN");
+        vm.label(SIGNER, "SIGNER");
 
         DeployScript deployScript = new DeployScript();
-        (accessManager,,, registerProxy, userBeaconHolder,) = deployScript.createContracts(OWNER);
+        (accessManager, erc2771Forwarder,, registerProxy, userBeaconHolder,) = deployScript.createContracts(OWNER);
         deployScript.grantAccessToRoles(
             OWNER, accessManager, address(registerProxy), address(userBeaconHolder), address(0)
         );
@@ -59,7 +67,7 @@ contract UserTest is Test {
         vm.prank(FINANCE_ADMIN);
         registerProxy.setGuessAndRevealDuration(Utils.MIN_DURATION, Utils.MIN_DURATION);
 
-        userV2Impl = new UserV2();
+        userV2Impl = new UserV2(address(erc2771Forwarder));
     }
 
     function test_setIndex() public {
@@ -211,6 +219,37 @@ contract UserTest is Test {
         assertEq(-1, user1.indexOf(riddle3));
 
         assertEq(0, user2.indexOf(riddle3));
+    }
+
+    function test_MetaTransaction() public {
+        vm.startPrank(SIGNER);
+        IUser signer = registerProxy.registerMeAs("signer");
+        assertEq(1, registerProxy.totalUsers());
+        assertEq(0, registerProxy.totalRiddles());
+
+        ERC2771ForwarderUpgradeable.ForwardRequestData memory request = ERC2771ForwarderUpgradeable.ForwardRequestData({
+            from: SIGNER,
+            to: address(signer),
+            data: abi.encodeCall(IUser.commit, (TYPICAL_RIDDLE_STATEMENT, 101)),
+            value: 0,
+            gas: 1000000,
+            deadline: uint48(block.timestamp + 1),
+            signature: "" // should be overriden with signRequestData
+        });
+
+        request = MetaTxUtils.signRequestData(
+            erc2771Forwarder, request, vm, SIGNER_PRIVATE_KEY, erc2771Forwarder.nonces(SIGNER)
+        );
+
+        erc2771Forwarder.execute(request);
+
+        assertEq(1, registerProxy.totalRiddles());
+        IRiddle riddle = registerProxy.riddles(0);
+        uint256 currentBlockNumber = block.number;
+        assertEq(SIGNER, riddle.owner());
+        assertEq(TYPICAL_RIDDLE_STATEMENT, riddle.statement());
+        assertEq(currentBlockNumber + Utils.MIN_DURATION, riddle.guessDeadline());
+        assertEq(currentBlockNumber + Utils.MIN_DURATION * 2, riddle.revealDeadline());
     }
 
     function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {

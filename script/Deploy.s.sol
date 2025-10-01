@@ -69,14 +69,16 @@ contract DeployScript is Script {
         resultErc2771Forwarder.initialize("erc2771Forwarder");
 
         resultAccessManagedUserBeaconHolder = new AccessManagedBeaconHolder(address(accessManagerUpgradeable));
-        address userUpgradeableBeaconAddress =
-            UnsafeUpgrades.deployBeacon(address(new User()), address(resultAccessManagedUserBeaconHolder));
+        address userUpgradeableBeaconAddress = UnsafeUpgrades.deployBeacon(
+            address(new User(address(resultErc2771Forwarder))), address(resultAccessManagedUserBeaconHolder)
+        );
         UpgradeableBeacon userUpgradeableBeacon = UpgradeableBeacon(userUpgradeableBeaconAddress);
         resultAccessManagedUserBeaconHolder.initialize(userUpgradeableBeacon);
 
         resultAccessManagedRiddleBeaconHolder = new AccessManagedBeaconHolder(address(accessManagerUpgradeable));
-        address riddleUpgradeableBeaconAddress =
-            UnsafeUpgrades.deployBeacon(address(new Riddle()), address(resultAccessManagedRiddleBeaconHolder));
+        address riddleUpgradeableBeaconAddress = UnsafeUpgrades.deployBeacon(
+            address(new Riddle(address(resultErc2771Forwarder))), address(resultAccessManagedRiddleBeaconHolder)
+        );
         UpgradeableBeacon riddleUpgradeableBeacon = UpgradeableBeacon(riddleUpgradeableBeaconAddress);
         resultAccessManagedRiddleBeaconHolder.initialize(riddleUpgradeableBeacon);
 

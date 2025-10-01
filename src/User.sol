@@ -12,6 +12,8 @@ import {Utils} from "./Utils.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 
@@ -19,14 +21,15 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
  * @title User
  * @dev User contract
  */
-contract User is IUser, OwnableUpgradeable, ERC165 {
+contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     ShortString public nick;
     uint32 public index;
     address payable public registerAddress;
 
     IRiddle[] public riddles;
 
-    constructor() {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {
         _disableInitializers();
     }
 
@@ -136,5 +139,44 @@ contract User is IUser, OwnableUpgradeable, ERC165 {
      */
     function owner() public view virtual override(OwnableUpgradeable, IUser) returns (address) {
         return OwnableUpgradeable.owner();
+    }
+
+    /**
+     * @dev Necessary override
+     */
+    function _contextSuffixLength()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (uint256)
+    {
+        return ERC2771ContextUpgradeable._contextSuffixLength();
+    }
+    /**
+     * @dev Necessary override
+     */
+    /**
+     * @dev Necessary override
+     */
+
+    function _msgSender()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (address)
+    {
+        return ERC2771ContextUpgradeable._msgSender();
+    }
+
+    function _msgData()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (bytes calldata)
+    {
+        return ERC2771ContextUpgradeable._msgData();
     }
 }

@@ -175,6 +175,19 @@ interface IRiddle {
     function guessOf(address sender) external view returns (Guess memory);
 
     /**
+     * @dev Get number of riddle guesses
+     * @return number of riddle guesses
+     */
+    function totalGuesses() external view returns (uint256);
+
+    /**
+     * @dev Find guess by its index in guesses array
+     * @param _index Guess index in guesses array
+     * @return Found guess
+     */
+    function guessByIndex(uint256 _index) external view returns (Guess memory);
+
+    /**
      * @dev Reveal solution of the riddle
      * @param userSecretKey User secret key
      * @return solution Is the riddle statement true? (riddle author's point of view)

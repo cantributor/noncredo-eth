@@ -11,9 +11,11 @@ import {Guess} from "../src/structs/Guess.sol";
 import {Payment} from "../src/structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
+import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Roles} from "src/Roles.sol";
-
 import {Utils} from "src/Utils.sol";
+
+import {MetaTxUtils} from "./utils/MetaTxUtils.sol";
 
 import {UserV2} from "./upgrades/UserV2.sol";
 import {RiddleV2} from "./upgrades/RiddleV2.sol";
@@ -22,11 +24,13 @@ import {DeployScript} from "../script/Deploy.s.sol";
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
+import {ERC2771ForwarderUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ForwarderUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 contract RiddleTest is Test {
     IAccessManager private accessManager;
+    ERC2771Forwarder private erc2771Forwarder;
     IRegister private registerProxy;
     AccessManagedBeaconHolder private riddleBeaconHolder;
 
@@ -35,11 +39,14 @@ contract RiddleTest is Test {
     address private constant USER_ADMIN = address(0xB);
     address private constant FINANCE_ADMIN = address(0xC);
 
+    uint256 private constant SIGNER_PRIVATE_KEY = 0xACE101;
+
     address private constant RIDDLING = address(100);
     address private constant GUESSING_1 = address(101);
     address private constant GUESSING_2 = address(102);
     address private constant GUESSING_3 = address(103);
     address private constant GUESSING_NOT_REGISTERED = address(104);
+    address private immutable SIGNER = vm.addr(SIGNER_PRIVATE_KEY);
 
     IRiddle private riddleV2Impl;
 
@@ -56,14 +63,17 @@ contract RiddleTest is Test {
         vm.label(UPGRADE_ADMIN, "UPGRADE_ADMIN");
         vm.label(USER_ADMIN, "UPGRADE_ADMIN");
         vm.label(FINANCE_ADMIN, "FINANCE_ADMIN");
+
         vm.label(RIDDLING, "RIDDLING");
 
         vm.label(GUESSING_1, "GUESSING_1");
         vm.label(GUESSING_2, "GUESSING_2");
         vm.label(GUESSING_3, "GUESSING_3");
 
+        vm.label(SIGNER, "SIGNER");
+
         DeployScript deployScript = new DeployScript();
-        (accessManager,,, registerProxy,, riddleBeaconHolder) = deployScript.createContracts(OWNER);
+        (accessManager, erc2771Forwarder,, registerProxy,, riddleBeaconHolder) = deployScript.createContracts(OWNER);
         deployScript.grantAccessToRoles(
             OWNER, accessManager, address(registerProxy), address(0), address(riddleBeaconHolder)
         );
@@ -79,7 +89,7 @@ contract RiddleTest is Test {
         registerProxy.setRegisterAndRiddlingRewards(1, 9);
         vm.stopPrank();
 
-        riddleV2Impl = new RiddleV2();
+        riddleV2Impl = new RiddleV2(address(erc2771Forwarder));
 
         vm.prank(RIDDLING);
         riddling = registerProxy.registerMeAs("riddling");
@@ -189,6 +199,7 @@ contract RiddleTest is Test {
 
     function test_guess_Successful() public {
         IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        assertEq(0, riddle.totalGuesses());
 
         assertEq(1000, GUESSING_1.balance);
         vm.expectEmit(true, true, false, true);
@@ -203,7 +214,15 @@ contract RiddleTest is Test {
         assertEq(1000, address(riddle).balance);
 
         Guess memory foundGuess = riddle.guessOf(GUESSING_1);
+        assertEq(GUESSING_1, foundGuess.account);
         assertEq(1000, foundGuess.bet);
+        assertTrue(foundGuess.credo);
+
+        assertEq(1, riddle.totalGuesses());
+        Guess memory guessByIndex = riddle.guessByIndex(0);
+        assertEq(GUESSING_1, guessByIndex.account);
+        assertEq(1000, guessByIndex.bet);
+        assertTrue(guessByIndex.credo);
     }
 
     function test_reveal_RevertWhen_GuessPeriodNotFinished() public {
@@ -384,6 +403,37 @@ contract RiddleTest is Test {
 
         // below commit is possible because Register.riddleByStatement cleaned from riddle1.statement
         util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+    }
+
+    function test_MetaTransaction() public {
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        assertEq(1, registerProxy.totalRiddles());
+        assertEq(0, riddle.totalGuesses());
+
+        vm.startPrank(SIGNER);
+        registerProxy.registerMeAs("signer");
+
+        ERC2771ForwarderUpgradeable.ForwardRequestData memory request = ERC2771ForwarderUpgradeable.ForwardRequestData({
+            from: SIGNER,
+            to: address(riddle),
+            data: abi.encodeCall(IRiddle.guess, (true)),
+            value: 0,
+            gas: 1_000_000,
+            deadline: uint48(block.timestamp + 1),
+            signature: "" // should be overriden with signRequestData
+        });
+
+        request = MetaTxUtils.signRequestData(
+            erc2771Forwarder, request, vm, SIGNER_PRIVATE_KEY, erc2771Forwarder.nonces(SIGNER)
+        );
+
+        erc2771Forwarder.execute(request);
+
+        assertEq(1, riddle.totalGuesses());
+        Guess memory guessByIndex = riddle.guessByIndex(0);
+        assertEq(0, guessByIndex.bet);
+        assertEq(SIGNER, guessByIndex.account);
+        assertTrue(guessByIndex.credo);
     }
 
     function test_Upgrade_RevertWhen_CallerIsNotAuthorized() public {

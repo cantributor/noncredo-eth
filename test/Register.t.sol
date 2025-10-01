@@ -19,6 +19,8 @@ import {RegisterV2} from "./upgrades/RegisterV2.sol";
 
 import {FakeUser} from "./fakes/FakeUser.sol";
 
+import {MetaTxUtils} from "./utils/MetaTxUtils.sol";
+
 import {DeployScript} from "../script/Deploy.s.sol";
 
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
@@ -406,10 +408,12 @@ contract RegisterTest is Test {
             value: 0,
             gas: 1000000,
             deadline: uint48(block.timestamp + 1),
-            signature: "" // should be overriden with util_signRequestData
+            signature: "" // should be overriden with signRequestData
         });
 
-        util_signRequestData(request, erc2771Forwarder.nonces(SIGNER));
+        request = MetaTxUtils.signRequestData(
+            erc2771Forwarder, request, vm, SIGNER_PRIVATE_KEY, erc2771Forwarder.nonces(SIGNER)
+        );
 
         erc2771Forwarder.execute(request);
 
@@ -460,17 +464,6 @@ contract RegisterTest is Test {
         assertTrue(success);
         uint256 totalUsers = abi.decode(result, (uint256));
         return totalUsers;
-    }
-
-    function util_signRequestData(ERC2771ForwarderUpgradeable.ForwardRequestData memory request, uint256 nonce)
-        private
-        view
-        returns (ERC2771ForwarderUpgradeable.ForwardRequestData memory)
-    {
-        bytes32 digest = erc2771Forwarder.forwardRequestStructHash(request, nonce);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, digest);
-        request.signature = abi.encodePacked(r, s, v);
-        return request;
     }
 
     receive() external payable {

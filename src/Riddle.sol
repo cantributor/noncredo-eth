@@ -12,6 +12,8 @@ import {Utils} from "./Utils.sol";
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -19,7 +21,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
  * @title Riddle
  * @dev Riddle
  */
-contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
+contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     string public statement;
     uint256 public encryptedSolution;
 
@@ -33,7 +35,8 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
 
     Guess[] internal guesses;
 
-    constructor() {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {
         _disableInitializers();
     }
 
@@ -106,6 +109,14 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
             }
         }
         return _guess;
+    }
+
+    function totalGuesses() external view virtual override returns (uint256) {
+        return guesses.length;
+    }
+
+    function guessByIndex(uint256 _index) external view virtual override returns (Guess memory) {
+        return guesses[_index];
     }
 
     function reveal(string calldata userSecretKey) external override onlyOwner returns (bool solution) {
@@ -216,5 +227,44 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165 {
         if (msgSender != owner() && msgSender != address(user)) {
             revert OwnableUnauthorizedAccount(_msgSender());
         }
+    }
+
+    /**
+     * @dev Necessary override
+     */
+    function _contextSuffixLength()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (uint256)
+    {
+        return ERC2771ContextUpgradeable._contextSuffixLength();
+    }
+    /**
+     * @dev Necessary override
+     */
+    /**
+     * @dev Necessary override
+     */
+
+    function _msgSender()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (address)
+    {
+        return ERC2771ContextUpgradeable._msgSender();
+    }
+
+    function _msgData()
+        internal
+        view
+        virtual
+        override(ERC2771ContextUpgradeable, ContextUpgradeable)
+        returns (bytes calldata)
+    {
+        return ERC2771ContextUpgradeable._msgData();
     }
 }

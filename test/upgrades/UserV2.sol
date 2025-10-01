@@ -14,6 +14,8 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract UserV2 is User {
     string private suffix;
 
+    constructor(address trustedForwarder) User(trustedForwarder) {}
+
     function nickString() external view override returns (string memory) {
         return string.concat(ShortStrings.toString(nick), "_", suffix);
     }
