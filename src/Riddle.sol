@@ -23,12 +23,12 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
  */
 contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     string public statement;
-    uint256 public encryptedSolution;
 
     uint32 public id;
     uint32 public index;
     IUser public user;
-    bool public revealed;
+    bool public revelation;
+    bool public finished;
 
     uint256 public guessDeadline;
     uint256 public revealDeadline;
@@ -46,18 +46,21 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         uint32 _index,
         IUser _user,
         string calldata _statement,
-        uint256 _encryptedSolution
-    ) external override initializer {
+        uint256 _encryptedCredo
+    ) external payable override initializer {
         __Ownable_init(initialOwner);
         id = _id;
         index = _index;
         user = _user;
         statement = _statement;
-        encryptedSolution = _encryptedSolution;
+        Guess memory ownerGuess = Guess(_user.owner(), _encryptedCredo, msg.value, false, false);
+        guesses.push(ownerGuess);
 
         IRegister reg = user.register();
         guessDeadline = block.number + reg.guessDurationBlocks();
         revealDeadline = guessDeadline + reg.revealDurationBlocks();
+        revelation = false;
+        finished = false;
     }
 
     /**
@@ -74,10 +77,10 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         index = _index;
     }
 
-    function guess(bool credo) external payable override returns (Guess memory _guess) {
+    function guess(uint256 encryptedCredo) external payable override returns (Guess memory _guess) {
         address msgSender = _msgSender();
-        if (revealed) {
-            revert RiddleAlreadyRevealed(id, address(this), msgSender);
+        if (revelation) {
+            revert RiddleAlreadyInRevelationState(id, address(this), msgSender);
         }
         IRegister register = user.register();
         if (register.paused()) {
@@ -87,28 +90,32 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
             revert RiddleIsNotRegistered(id, address(this), msgSender);
         }
         register.userOf(msgSender);
-        if (msgSender == owner()) {
-            revert OwnerCannotGuess(id, owner());
+        (Guess memory foundGuess, uint256 guessIndex) = this.guessOf(msgSender);
+        if (guessIndex < guesses.length) {
+            revert GuessOfSenderAlreadyExists(id, foundGuess.account, guessIndex);
         }
-        Guess memory foundGuess = this.guessOf(msgSender);
-        if (foundGuess.account != address(0)) {
-            revert GuessOfSenderAlreadyExists(id, msgSender, foundGuess.credo, foundGuess.bet);
-        }
-        _guess = Guess(msgSender, credo, msg.value);
+        _guess = Guess(msgSender, encryptedCredo, msg.value, false, false);
         guesses.push(_guess);
-        emit GuessRegistered(address(this), msgSender, id, credo, msg.value);
+        emit GuessRegistered(address(this), msgSender, id, encryptedCredo, msg.value);
         return _guess;
     }
 
-    function guessOf(address sender) external view virtual override returns (Guess memory _guess) {
-        _guess = Guess(address(0), false, 0);
-        for (uint256 i = 0; i < guesses.length; i++) {
-            if (guesses[i].account == sender) {
-                _guess = guesses[i];
+    function guessOf(address sender)
+        external
+        view
+        virtual
+        override
+        returns (Guess memory _guess, uint256 _guessIndex)
+    {
+        _guess = Guess(address(0), 0, 0, false, false);
+        _guessIndex;
+        for (_guessIndex = 0; _guessIndex < guesses.length; _guessIndex++) {
+            if (guesses[_guessIndex].account == sender) {
+                _guess = guesses[_guessIndex];
                 break;
             }
         }
-        return _guess;
+        return (_guess, _guessIndex);
     }
 
     function totalGuesses() external view virtual override returns (uint256) {
@@ -119,24 +126,33 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         return guesses[_index];
     }
 
-    function reveal(string calldata userSecretKey) external override onlyOwner returns (bool solution) {
+    function reveal(string calldata userSecretKey) external override returns (bool credo) {
         address msgSender = _msgSender();
         IRegister register = user.register();
         if (register.paused()) {
             revert PausableUpgradeable.EnforcedPause();
         }
-        if (revealed) {
-            revert RiddleAlreadyRevealed(id, address(this), msgSender);
-        }
         if (block.number <= guessDeadline) {
             revert GuessPeriodNotFinished(id, block.number, guessDeadline);
         }
-        solution = Utils.decryptSolution(this, userSecretKey);
-        if (address(this).balance > 0) {
-            shareBalance(false, solution);
+        (Guess memory guessOfCaller, uint256 guessIndex) = this.guessOf(msgSender);
+        if (guessIndex == guesses.length) {
+            revert NothingToReveal(id, address(this), msgSender);
         }
-        revealed = true;
-        return solution;
+        if (guessOfCaller.revealed) {
+            revert RiddleAlreadyRevealedByCaller(id, address(this), msgSender);
+        }
+        guessOfCaller.credo = Utils.decryptCredo(this, guessOfCaller.encryptedCredo, userSecretKey);
+        //        if (address(this).balance > 0) {
+        //            shareBalance(false, credo);
+        //        }
+        guessOfCaller.revealed = true;
+        guesses[guessIndex] = guessOfCaller;
+        if (!revelation) {
+            revelation = true;
+        }
+        emit GuessRevealed(address(this), msgSender, id, guessOfCaller.credo, guessOfCaller.bet);
+        return credo;
     }
 
     /**
@@ -187,10 +203,10 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         }
     }
 
-    function finalize() external onlyForRegister {
+    function finalize() external virtual override onlyForRegister {
         shareBalance(true, true);
         delete guesses;
-        revealed = true;
+        finished = true;
     }
 
     function remove() external virtual override onlyOwner {

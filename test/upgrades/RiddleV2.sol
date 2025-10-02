@@ -8,7 +8,7 @@ import {Riddle} from "src/Riddle.sol";
 contract RiddleV2 is Riddle {
     constructor(address trustedForwarder) Riddle(trustedForwarder) {}
 
-    function guessOf(address sender) external pure override returns (Guess memory _guess) {
-        return Guess(sender, true, 777);
+    function guessOf(address sender) external pure override returns (Guess memory _guess, uint256 _guessIndex) {
+        return (Guess(sender, 101, 0, false, false), 777);
     }
 }

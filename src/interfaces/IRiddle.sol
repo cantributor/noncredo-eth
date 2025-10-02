@@ -20,20 +20,12 @@ interface IRiddle {
     error RiddleAlreadyRegistered(uint32 riddleId, string userNick, uint32 riddleIndex);
 
     /**
-     * @dev Owner of the Riddle cannot guess his own nick
-     * @param riddleId Riddle id
-     * @param guessSender Guess sender address
-     */
-    error OwnerCannotGuess(uint32 riddleId, address guessSender);
-
-    /**
      * @dev Guess of this sender already exists
      * @param riddleId Riddle id
      * @param guessSender Guess sender address
-     * @param credo Guess credo/noncredo
-     * @param bet Guess bet value
+     * @param guessIndex Found Guess index in guesses array
      */
-    error GuessOfSenderAlreadyExists(uint32 riddleId, address guessSender, bool credo, uint256 bet);
+    error GuessOfSenderAlreadyExists(uint32 riddleId, address guessSender, uint256 guessIndex);
 
     /**
      * @dev Riddle is not registered
@@ -44,12 +36,28 @@ interface IRiddle {
     error RiddleIsNotRegistered(uint32 riddleId, address riddleAddress, address msgSender);
 
     /**
-     * @dev Riddle already revealed
+     * @dev Riddle has no guess from this caller, so nothing to reveal
      * @param riddleId Riddle id
      * @param riddleAddress Riddle contract address
      * @param msgSender Message sender address
      */
-    error RiddleAlreadyRevealed(uint32 riddleId, address riddleAddress, address msgSender);
+    error NothingToReveal(uint32 riddleId, address riddleAddress, address msgSender);
+
+    /**
+     * @dev Riddle already in revelation state
+     * @param riddleId Riddle id
+     * @param riddleAddress Riddle contract address
+     * @param msgSender Message sender address
+     */
+    error RiddleAlreadyInRevelationState(uint32 riddleId, address riddleAddress, address msgSender);
+
+    /**
+     * @dev Riddle already revealed by this caller
+     * @param riddleId Riddle id
+     * @param riddleAddress Riddle contract address
+     * @param msgSender Message sender address
+     */
+    error RiddleAlreadyRevealedByCaller(uint32 riddleId, address riddleAddress, address msgSender);
 
     /**
      * @dev Guess period not finished yet (revelation too early)
@@ -92,12 +100,22 @@ interface IRiddle {
      * @param riddleAddress Riddle contract address
      * @param guessSender Guess sender address
      * @param id Riddle id
-     * @param credo Guess credo/noncredo
+     * @param encryptedCredo Encrypted Credo/NonCredo
      * @param bet Placed bet value
      */
     event GuessRegistered(
-        address indexed riddleAddress, address indexed guessSender, uint32 id, bool credo, uint256 bet
+        address indexed riddleAddress, address indexed guessSender, uint32 id, uint256 encryptedCredo, uint256 bet
     );
+
+    /**
+     * @dev Riddle guess successfully registered
+     * @param riddleAddress Riddle contract address
+     * @param guessSender Guess sender address
+     * @param id Riddle id
+     * @param credo Revealed Credo/NonCredo
+     * @param bet Placed bet value
+     */
+    event GuessRevealed(address indexed riddleAddress, address indexed guessSender, uint32 id, bool credo, uint256 bet);
 
     /**
      * @dev Riddle reward payed
@@ -125,7 +143,7 @@ interface IRiddle {
      * @param _index Index in Register
      * @param _user User contract
      * @param _statement Riddle statement
-     * @param _encryptedSolution Encrypted solution
+     * @param _encryptedCredo Encrypted owner's Credo/NonCredo
      */
     function initialize(
         address initialOwner,
@@ -133,8 +151,8 @@ interface IRiddle {
         uint32 _index,
         IUser _user,
         string calldata _statement,
-        uint256 _encryptedSolution
-    ) external;
+        uint256 _encryptedCredo
+    ) external payable;
 
     /**
      * @dev Ownable implementation
@@ -158,21 +176,21 @@ interface IRiddle {
      */
     function setIndex(uint32 _index) external;
     function statement() external view returns (string memory);
-    function encryptedSolution() external view returns (uint256);
 
     /**
-     * @dev Register the attempt to guess the riddle
-     * @param credo Credo/NonCredo
-     * @return _guess Registered guess attempt
+     * @dev Register the guess for the riddle
+     * @param encryptedCredo Encrypted Credo/NonCredo
+     * @return _guess Registered guess
      */
-    function guess(bool credo) external payable returns (Guess memory);
+    function guess(uint256 encryptedCredo) external payable returns (Guess memory);
 
     /**
-     * @dev Find guess attempt for specified account
+     * @dev Find guess for specified account
      * @param sender Guess sender account
-     * @return _guess Registered guess attempt
+     * @return _guess Registered guess
+     * @return _guessIndex Guess index in guesses array
      */
-    function guessOf(address sender) external view returns (Guess memory);
+    function guessOf(address sender) external view returns (Guess memory _guess, uint256 _guessIndex);
 
     /**
      * @dev Get number of riddle guesses

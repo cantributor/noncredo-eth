@@ -3,13 +3,17 @@
 pragma solidity 0.8.28;
 
 /**
- * @dev Attempt to guess the riddle's author game
+ * @dev Guess for the riddle (Credo/NonCredo)
  * @param account Guessing account
- * @param credo Credo/NonCredo of guessing
+ * @param encryptedCredo Encrypted credo (Credo/NonCredo)
  * @param bet Placed bet
+ * @param revealed Is Credo/NonCredo already revealed?
+ * @param credo Credo/NonCredo
  */
 struct Guess {
     address account;
-    bool credo;
+    uint256 encryptedCredo;
     uint256 bet;
+    bool revealed;
+    bool credo;
 }

@@ -29,7 +29,7 @@ contract ScenarioUserCommit is Script {
         console.log("Riddling reward (%):", registerProxy.riddlingRewardPercent());
 
         string memory statement = "I am killer!";
-        uint256 encryptedSolution = Utils.encryptSolution(statement, false, "secret");
+        uint256 encryptedSolution = Utils.encryptCredo(statement, false, "secret");
         console.log("Encrypted solution: ", encryptedSolution);
 
         IUser owner = registerProxy.userOf("owner");

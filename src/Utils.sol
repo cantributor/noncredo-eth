@@ -56,9 +56,11 @@ library Utils {
     /**
      * @dev Passed user secret key does not match encrypted solution
      * @param riddleId Riddle id
+     * @param statement Riddle statement
+     * @param encryptedCredo Encrypted Credo/NonCredo
      * @param userSecretKey Incorrect user secret key
      */
-    error IncorrectUserSecretKey(uint32 riddleId, string userSecretKey);
+    error IncorrectUserSecretKey(uint32 riddleId, string statement, uint256 encryptedCredo, string userSecretKey);
 
     /**
      * @dev Invalid guess and/or reveal duration
@@ -132,35 +134,40 @@ library Utils {
     }
 
     /**
-     * @dev Encrypt Riddle solution
+     * @dev Encrypt Credo/NonCredo
      * @param riddleStatement Riddle statement
-     * @param solution Boolean Riddle solution (true/false)
-     * @param userSecretKey User secret key string to hide solution
-     * @return encryptedSolution Encrypted solution
+     * @param credo Credo/NonCredo
+     * @param userSecretKey User secret key string to hide Credo/NonCredo
+     * @return encryptedCredo Encrypted Credo/NonCredo
      */
-    function encryptSolution(string calldata riddleStatement, bool solution, string calldata userSecretKey)
+    function encryptCredo(string calldata riddleStatement, bool credo, string calldata userSecretKey)
         external
         pure
-        returns (uint256 encryptedSolution)
+        returns (uint256 encryptedCredo)
     {
         uint256 hash = uint256(keccak256(bytes(string.concat(riddleStatement, userSecretKey))));
-        return solution ? hash + 1 : hash;
+        return credo ? hash + 1 : hash;
     }
 
     /**
-     * @dev Encrypt Riddle solution
+     * @dev Decrypt Credo/NonCredo
      * @param riddle Riddle contract
-     * @param userSecretKey User secret key string to hide solution
-     * @return solution Boolean Riddle solution (true/false)
+     * @param encryptedCredo Encrypted Credo/NonCredo
+     * @param userSecretKey User secret key string to hide Credo/NonCredo
+     * @return decryptedCredo Decrypted Credo/NonCredo
      */
-    function decryptSolution(IRiddle riddle, string calldata userSecretKey) external view returns (bool solution) {
+    function decryptCredo(IRiddle riddle, uint256 encryptedCredo, string calldata userSecretKey)
+        external
+        view
+        returns (bool decryptedCredo)
+    {
         uint256 hash = uint256(keccak256(bytes(string.concat(riddle.statement(), userSecretKey))));
-        if (hash == riddle.encryptedSolution()) {
-            solution = false;
-        } else if (hash + 1 == riddle.encryptedSolution()) {
-            solution = true;
+        if (hash == encryptedCredo) {
+            decryptedCredo = false;
+        } else if (hash + 1 == encryptedCredo) {
+            decryptedCredo = true;
         } else {
-            revert IncorrectUserSecretKey(riddle.id(), userSecretKey);
+            revert IncorrectUserSecretKey(riddle.id(), riddle.statement(), encryptedCredo, userSecretKey);
         }
     }
 }

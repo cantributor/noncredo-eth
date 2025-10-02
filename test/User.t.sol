@@ -7,6 +7,8 @@ import {IRegister} from "../src/interfaces/IRegister.sol";
 import {IRiddle} from "../src/interfaces/IRiddle.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
+import {Guess} from "../src/structs/Guess.sol";
+
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
 import {Roles} from "src/Roles.sol";
@@ -173,6 +175,11 @@ contract UserTest is Test {
         assertEq(0, riddle1.index());
         assertEq(currentBlockNumber + Utils.MIN_DURATION, riddle1.guessDeadline());
         assertEq(currentBlockNumber + Utils.MIN_DURATION * 2, riddle1.revealDeadline());
+
+        (Guess memory foundGuess, uint256 guessIndex) = riddle1.guessOf(USER);
+        assertEq(0, guessIndex);
+        assertEq(USER, foundGuess.account);
+        assertEq(0, foundGuess.bet);
 
         vm.startPrank(OWNER);
         IUser user2 = registerProxy.registerMeAs("user2");
