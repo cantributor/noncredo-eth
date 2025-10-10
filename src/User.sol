@@ -56,6 +56,7 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
 
     function commit(string calldata statement, uint256 encryptedSolution)
         external
+        payable
         virtual
         override
         onlyOwner
@@ -74,6 +75,12 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
         riddle = IRiddle(payable(riddleBeaconProxy));
         riddles.push(riddle);
         reg.registerRiddle(riddle);
+        if (msg.value > 0) {
+            (bool success,) = payable(riddle).call{value: msg.value}("");
+            if (!success) {
+                revert IUser.CommitmentError(owner(), address(this), statement, msg.value);
+            }
+        }
         return riddle;
     }
 

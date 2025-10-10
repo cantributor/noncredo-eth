@@ -41,7 +41,13 @@ contract FakeUser is IUser, Ownable, ERC165 {
         return Ownable.owner();
     }
 
-    function commit(string calldata statement, uint256 encryptedSolution) external virtual override returns (IRiddle) {
+    function commit(string calldata statement, uint256 encryptedSolution)
+        external
+        payable
+        virtual
+        override
+        returns (IRiddle)
+    {
         console.log("Just to escape compiler warning about variables not used", statement, encryptedSolution);
         return IRiddle(payable(0));
     }

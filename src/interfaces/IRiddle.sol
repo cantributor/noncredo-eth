@@ -52,6 +52,14 @@ interface IRiddle {
     error RiddleAlreadyInRevelationState(uint32 riddleId, address riddleAddress, address msgSender);
 
     /**
+     * @dev Riddle already finished
+     * @param riddleId Riddle id
+     * @param riddleAddress Riddle contract address
+     * @param msgSender Message sender address
+     */
+    error RiddleAlreadyFinished(uint32 riddleId, address riddleAddress, address msgSender);
+
+    /**
      * @dev Riddle already revealed by this caller
      * @param riddleId Riddle id
      * @param riddleAddress Riddle contract address

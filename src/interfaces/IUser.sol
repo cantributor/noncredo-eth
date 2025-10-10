@@ -13,6 +13,15 @@ import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
  */
 interface IUser {
     /**
+     * @dev CommitmentError
+     * @param commiterAccount Commiter account address
+     * @param userAddress User contract address
+     * @param statement Riddle statement
+     * @param amount Value of commiter's bet
+     */
+    error CommitmentError(address commiterAccount, address userAddress, string statement, uint256 amount);
+
+    /**
      * @dev User successfully registered
      * @param owner User owner address
      * @param nick User nick
@@ -103,5 +112,5 @@ interface IUser {
      * @param statement Riddle statement
      * @param encryptedSolution Encrypted solution
      */
-    function commit(string calldata statement, uint256 encryptedSolution) external returns (IRiddle);
+    function commit(string calldata statement, uint256 encryptedSolution) external payable returns (IRiddle);
 }

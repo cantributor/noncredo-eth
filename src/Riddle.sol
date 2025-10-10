@@ -232,7 +232,14 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
      * @dev To receive sponsor payments (no guess)
      */
     receive() external payable override {
-        emit SponsorPaymentReceived(address(this), _msgSender(), id, msg.value);
+        if (finished) {
+            revert RiddleAlreadyFinished(id, address(this), _msgSender());
+        }
+        if (_msgSender() == address(user)) {
+            guesses[0].bet = msg.value;
+        } else {
+            emit SponsorPaymentReceived(address(this), _msgSender(), id, msg.value);
+        }
     }
 
     /**

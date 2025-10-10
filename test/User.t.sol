@@ -161,25 +161,28 @@ contract UserTest is Test {
     function test_commit_Successful() public {
         IUser user1 = registerProxy.registerMeAs("user1");
         assertEq(0, registerProxy.totalRiddles());
+        vm.deal(USER, 1000);
 
         vm.expectEmit(true, false, false, true);
         emit IRiddle.RiddleRegistered(address(user1), address(0), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
 
         uint256 currentBlockNumber = block.number;
         console.log("Current block number", currentBlockNumber);
-        IRiddle riddle1 = user1.commit(TYPICAL_RIDDLE_STATEMENT, 777);
+        IRiddle riddle1 = user1.commit{value: 1000}(TYPICAL_RIDDLE_STATEMENT, 777);
         assertEq(1, registerProxy.totalRiddles());
         assertEq(USER, riddle1.owner());
         assertEq(TYPICAL_RIDDLE_STATEMENT, riddle1.statement());
         assertEq(1, riddle1.id());
         assertEq(0, riddle1.index());
+        assertEq(1000, address(riddle1).balance);
         assertEq(currentBlockNumber + Utils.MIN_DURATION, riddle1.guessDeadline());
         assertEq(currentBlockNumber + Utils.MIN_DURATION * 2, riddle1.revealDeadline());
 
         (Guess memory foundGuess, uint256 guessIndex) = riddle1.guessOf(USER);
         assertEq(0, guessIndex);
         assertEq(USER, foundGuess.account);
-        assertEq(0, foundGuess.bet);
+        assertEq(1000, foundGuess.bet);
+        assertEq(0, address(USER).balance);
 
         vm.startPrank(OWNER);
         IUser user2 = registerProxy.registerMeAs("user2");
@@ -190,6 +193,7 @@ contract UserTest is Test {
         assertEq(OWNER, riddle2.owner());
         assertEq(2, riddle2.id());
         assertEq(1, riddle2.index());
+        assertEq(0, address(riddle2).balance);
 
         assertEq(address(riddle1), address(user1.riddles(0)));
         assertEq(address(riddle2), address(user2.riddles(0)));
