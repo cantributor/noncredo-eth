@@ -112,7 +112,7 @@ contract RiddleTest is Test {
     }
 
     function test_RevertWhen_NotRegisterCalls() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
         riddle.setIndex(666);
@@ -122,7 +122,7 @@ contract RiddleTest is Test {
     }
 
     function test_RevertWhen_NotOwnerCalls() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         bytes memory encodedOwnableUnauthorizedAccount =
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this));
@@ -132,7 +132,7 @@ contract RiddleTest is Test {
     }
 
     function test_setIndex() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         assertEq(0, riddle.index());
 
@@ -143,7 +143,7 @@ contract RiddleTest is Test {
     }
 
     function test_guess_RevertWhen_AccountNotRegistered() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.prank(GUESSING_NOT_REGISTERED);
         vm.expectRevert(
@@ -153,7 +153,7 @@ contract RiddleTest is Test {
     }
 
     function test_guess_RevertWhen_OwnerTriesToGuess() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.prank(RIDDLING);
         vm.expectRevert(abi.encodeWithSelector(IRiddle.GuessOfSenderAlreadyExists.selector, 1, address(RIDDLING), 0));
@@ -161,7 +161,7 @@ contract RiddleTest is Test {
     }
 
     function test_guess_RevertWhen_GuessOfSenderAlreadyExists() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.prank(GUESSING_1);
         riddle.guess(101);
@@ -171,8 +171,23 @@ contract RiddleTest is Test {
         riddle.guess(102);
     }
 
+    function test_guess_RevertWhen_RiddleAlreadyInRevelationState() public {
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+
+        vm.roll(riddle.guessDeadline() + 1);
+
+        vm.prank(RIDDLING);
+        riddle.reveal(USER_SECRET_KEY);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IRiddle.RiddleAlreadyInRevelationState.selector, 1, address(riddle), GUESSING_1)
+        );
+        vm.prank(GUESSING_1);
+        riddle.guess(101);
+    }
+
     function test_RevertWhen_OnPause() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.prank(USER_ADMIN);
         registerProxy.pause();
@@ -193,7 +208,7 @@ contract RiddleTest is Test {
     }
 
     function test_guess_Successful() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
         assertEq(1, riddle.totalGuesses());
 
         assertEq(1000, GUESSING_1.balance);
@@ -226,7 +241,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_RevertWhen_GuessPeriodNotFinished() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.expectRevert(
             abi.encodeWithSelector(IRiddle.GuessPeriodNotFinished.selector, 1, block.number, riddle.guessDeadline())
@@ -236,7 +251,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_RevertWhen_NothingToReveal() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.roll(riddle.guessDeadline() + 1);
         vm.expectRevert(abi.encodeWithSelector(IRiddle.NothingToReveal.selector, 1, address(riddle), GUESSING_1));
@@ -264,7 +279,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_RevertWhen_RiddleAlreadyRevealed() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.roll(riddle.guessDeadline() + 1);
 
@@ -279,18 +294,20 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_Successful_NoGuesses() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         vm.roll(riddle.guessDeadline() + 1);
         vm.prank(RIDDLING);
+        vm.expectEmit(true, true, false, true);
+        emit IRiddle.GuessRevealed(address(riddle), RIDDLING, 1, true, 0);
         riddle.reveal(USER_SECRET_KEY);
         assertEq(0, payable(riddle).balance);
         assertEq(0, RIDDLING.balance);
         assertEq(0, payable(registerProxy).balance);
     }
 
-    function test_reveal_Successful_NoGuessesWithSponsorPayment() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+    function test_reveal_Successful_WithSponsorPayment() public {
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
         (bool success,) = address(riddle).call{value: 1000}("");
         assertTrue(success);
 
@@ -303,7 +320,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_Successful_IncorrectGuess() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         util_GuessRiddle(riddle, GUESSING_1, false, 1000);
 
@@ -331,7 +348,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_Successful_CorrectGuess() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         util_GuessRiddle(riddle, GUESSING_1, true, 1000);
 
@@ -345,7 +362,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_Successful_CorrectGuessWithSponsorPayment() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
         (bool success,) = address(riddle).call{value: 1000}("");
         assertTrue(success);
 
@@ -361,7 +378,7 @@ contract RiddleTest is Test {
     }
 
     function test_reveal_Successful_CorrectAndIncorrectGuesses() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         util_GuessRiddle(riddle, GUESSING_1, true, 1000);
         util_GuessRiddle(riddle, GUESSING_2, true, 2000);
@@ -384,8 +401,8 @@ contract RiddleTest is Test {
     }
 
     function test_remove_Successful() public {
-        IRiddle riddle1 = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
-        IRiddle riddle2 = util_CreateRiddle("I am superman!", true, USER_SECRET_KEY);
+        IRiddle riddle1 = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+        IRiddle riddle2 = util_CreateRiddle("I am superman!", true, 0, USER_SECRET_KEY);
 
         vm.prank(GUESSING_1);
         riddle1.guess{value: 1000}(101);
@@ -417,11 +434,11 @@ contract RiddleTest is Test {
         assertEq(1000, GUESSING_3.balance);
 
         // below commit is possible because Register.riddleByStatement cleaned from riddle1.statement
-        util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
     }
 
     function test_MetaTransaction() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
         assertEq(1, registerProxy.totalRiddles());
         assertEq(1, riddle.totalGuesses());
 
@@ -457,7 +474,7 @@ contract RiddleTest is Test {
     }
 
     function test_Upgrade_Successful() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
         (Guess memory notExistingGuess, uint256 notExistingIndex) = riddle.guessOf(GUESSING_1);
         assertEq(address(0), notExistingGuess.account);
@@ -472,7 +489,7 @@ contract RiddleTest is Test {
     }
 
     function test_receive_Successful() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
         assertEq(0, address(riddle).balance);
 
         vm.expectEmit(true, true, false, true);
@@ -483,13 +500,13 @@ contract RiddleTest is Test {
         assertEq(1000, address(riddle).balance);
     }
 
-    function util_CreateRiddle(string memory statement, bool credo, string memory userSecretKey)
+    function util_CreateRiddle(string memory statement, bool credo, uint256 bet, string memory userSecretKey)
         private
         returns (IRiddle riddle)
     {
         uint256 encryptedSolution = Utils.encryptCredo(statement, credo, userSecretKey);
         vm.prank(RIDDLING);
-        riddle = riddling.commit(statement, encryptedSolution);
+        riddle = riddling.commit{value: bet}(statement, encryptedSolution);
         return riddle;
     }
 
