@@ -105,8 +105,8 @@ interface IRegister {
     function guessDurationBlocks() external returns (uint32);
     function revealDurationBlocks() external returns (uint32);
 
-    function registerRewardPercent() external returns (uint8);
-    function riddlingRewardPercent() external returns (uint8);
+    function registerRewardPercent() external view returns (uint8);
+    function riddlingRewardPercent() external view returns (uint8);
 
     function riddles(uint256) external view returns (IRiddle);
     function users(uint256) external view returns (IUser);

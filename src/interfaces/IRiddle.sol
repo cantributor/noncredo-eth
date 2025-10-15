@@ -76,6 +76,14 @@ interface IRiddle {
     error GuessPeriodNotFinished(uint32 riddleId, uint256 blockNumber, uint256 guessDeadline);
 
     /**
+     * @dev Revelation period not finished yet (finalization too early)
+     * @param riddleId Riddle id
+     * @param blockNumber Current block number
+     * @param revealDeadline Reveal deadline (when revelation will be possible)
+     */
+    error RevelationPeriodNotFinished(uint32 riddleId, uint256 blockNumber, uint256 revealDeadline);
+
+    /**
      * @dev Payment error
      * @param riddleAddress Riddle contract address
      * @param riddleId Riddle id
@@ -226,8 +234,14 @@ interface IRiddle {
     function remove() external;
 
     /**
-     * @dev In finalization process Riddle contract pays all its balance and stops further operation
+     * @dev Enforced stopping riddle operation in case some guesses are not revealed
      */
     function finalize() external;
+
+    /**
+     * @dev In this process Riddle contract pays all its balance, clears guesses and stops operation
+     */
+    function goodbye() external;
+
     receive() external payable;
 }

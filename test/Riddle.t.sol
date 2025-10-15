@@ -118,7 +118,7 @@ contract RiddleTest is Test {
         riddle.setIndex(666);
 
         vm.expectRevert(abi.encodeWithSelector(IRegister.OnlyRegisterMayCallThis.selector, this));
-        riddle.finalize();
+        riddle.goodbye();
     }
 
     function test_RevertWhen_NotOwnerCalls() public {
@@ -278,8 +278,10 @@ contract RiddleTest is Test {
         riddle.reveal("incorrect secret key");
     }
 
-    function test_reveal_RevertWhen_RiddleAlreadyRevealed() public {
+    function test_reveal_RevertWhen_RiddleAlreadyRevealedByCaller() public {
         IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+        vm.prank(GUESSING_1);
+        riddle.guess(101);
 
         vm.roll(riddle.guessDeadline() + 1);
 

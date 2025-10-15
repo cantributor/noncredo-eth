@@ -105,7 +105,7 @@ interface IUser {
      * @dev Conversion of registerAddress to Register contract
      * @return Register contract
      */
-    function register() external returns (IRegister);
+    function register() external view returns (IRegister);
 
     /**
      * @dev Commit new Riddle contract

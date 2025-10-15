@@ -129,7 +129,7 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
         riddles.pop();
     }
 
-    function register() public virtual override returns (IRegister) {
+    function register() public view virtual override returns (IRegister) {
         return IRegister(registerAddress);
     }
 

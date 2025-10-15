@@ -76,7 +76,7 @@ contract FakeUser is IUser, Ownable, ERC165 {
 
     function remove(IRiddle riddle) external virtual {}
 
-    function register() external virtual override returns (IRegister) {
+    function register() external view virtual override returns (IRegister) {
         return IRegister(registerAddress);
     }
 

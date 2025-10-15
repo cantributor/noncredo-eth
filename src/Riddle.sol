@@ -143,50 +143,72 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
             revert RiddleAlreadyRevealedByCaller(id, address(this), msgSender);
         }
         guessOfCaller.credo = Utils.decryptCredo(this, guessOfCaller.encryptedCredo, userSecretKey);
-        //        if (address(this).balance > 0) {
-        //            shareBalance(false, credo);
-        //        }
         guessOfCaller.revealed = true;
         guesses[guessIndex] = guessOfCaller;
         if (!revelation) {
             revelation = true;
         }
         emit GuessRevealed(address(this), msgSender, id, guessOfCaller.credo, guessOfCaller.bet);
+        if (allGuessesRevealed()) {
+            register.removeMe();
+        }
         return credo;
     }
 
     /**
-     * @dev Share the riddle reward amongst players
-     * @param solution Riddle solution (true/false)
+     * @dev Are all riddle guesses revealed?
+     * @return result True if all guesses are revealed, false otherwise
      */
-    function shareBalance(bool rollback, bool solution) internal {
-        IRegister register = user.register();
-        uint256 winnerBetsSum = 0;
+    function allGuessesRevealed() internal view returns (bool result) {
+        result = true;
         for (uint32 i = 0; i < guesses.length; i++) {
-            if (rollback || guesses[i].credo == solution) winnerBetsSum += guesses[i].bet;
+            result = result && guesses[i].revealed;
         }
-        uint256 prize = address(this).balance - winnerBetsSum;
-        uint256 registerReward = prize * register.registerRewardPercent() / 100;
-        uint256 riddlingReward = prize * register.riddlingRewardPercent() / 100;
-        uint256 guessingReward = address(this).balance - registerReward - riddlingReward;
-        bytes memory message = abi.encode(string.concat("For Riddle: ", Strings.toString(id)));
-        if (winnerBetsSum > 0) {
-            for (uint32 i = 0; i < guesses.length; i++) {
-                if (rollback || guesses[i].credo == solution) {
-                    if (guesses[i].bet > 0) {
-                        uint256 thisAccountReward = guesses[i].bet * guessingReward / winnerBetsSum;
-                        payReward(guesses[i].account, thisAccountReward, message);
-                    }
+    }
+
+    /**
+     * @dev Determine result of riddle guessing
+     * @return determined Riddle solution (Credo/NonCredo) is determined by voting
+     * @return credo Riddle solution (Credo/NonCredo)
+     */
+    function poll() internal view returns (bool determined, bool credo) {
+        uint32 credos = 0;
+        uint32 noncredos = 0;
+        for (uint32 i = 0; i < guesses.length; i++) {
+            if (guesses[i].revealed) {
+                if (guesses[i].credo) {
+                    credos++;
+                } else {
+                    noncredos++;
                 }
             }
         }
-        if (riddlingReward > 0) {
-            payReward(owner(), riddlingReward, message);
+        return (credos != noncredos, credos > noncredos);
+    }
+
+    /**
+     * @dev Calculate financial result of riddle guessing
+     * @param determined Is riddle solution (Credo/NonCredo) determined by voting?
+     * @param credo Riddle solution (Credo/NonCredo)
+     * @return winnerBetsSum Sum of winners' bets
+     * @return prize Sum to be shared amongst winners (includes losers' bets and sponsor payments)
+     */
+    function calculate(bool determined, bool credo) internal view returns (uint256 winnerBetsSum, uint256 prize) {
+        winnerBetsSum = 0;
+        uint256 loserBetsSum = 0;
+        uint256 refunds = address(this).balance;
+        if (determined) {
+            for (uint32 i = 0; i < guesses.length; i++) {
+                if (guesses[i].revealed) {
+                    if (guesses[i].credo == credo) winnerBetsSum += guesses[i].bet;
+                    else loserBetsSum += guesses[i].bet;
+                } else {
+                    refunds += guesses[i].bet;
+                }
+            }
         }
-        uint256 remainder = address(this).balance;
-        if (remainder > 0) {
-            payReward(payable(register), remainder, "");
-        }
+        uint256 registerReward = loserBetsSum * user.register().registerRewardPercent() / 100;
+        prize = address(this).balance - registerReward - winnerBetsSum - refunds;
     }
 
     /**
@@ -203,14 +225,53 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         }
     }
 
-    function finalize() external virtual override onlyForRegister {
-        shareBalance(true, true);
+    /**
+     * @dev Share the riddle balance amongst players, clear guesses array and mark riddle as finished
+     */
+    function goodbye() external virtual override onlyForRegister {
+        (bool determined, bool credo) = (false, false);
+        if (block.number > revealDeadline) {
+            (determined, credo) = poll();
+        }
+        (uint256 winnerBetsSum, uint256 prize) = calculate(determined, credo);
+        bytes memory message = abi.encode(string.concat("Riddle: ", Strings.toString(id)));
+        for (uint32 i = 0; i < guesses.length; i++) {
+            if (guesses[i].bet > 0) {
+                if (determined) {
+                    if (guesses[i].revealed) {
+                        if (guesses[i].credo == credo) {
+                            uint256 thisAccountReward = guesses[i].bet + (guesses[i].bet * prize / winnerBetsSum);
+                            payReward(guesses[i].account, thisAccountReward, message);
+                        }
+                    } else {
+                        payReward(guesses[i].account, guesses[i].bet, message);
+                    }
+                } else {
+                    payReward(guesses[i].account, guesses[i].bet, message);
+                }
+            }
+        }
+        uint256 remainder = address(this).balance;
+        if (remainder > 0) {
+            payReward(payable(user.register()), remainder, "");
+        }
         delete guesses;
         finished = true;
     }
 
     function remove() external virtual override onlyOwner {
         user.register().removeMe();
+    }
+
+    function finalize() external virtual override {
+        IRegister register = user.register();
+        if (register.paused()) {
+            revert PausableUpgradeable.EnforcedPause();
+        }
+        if (block.number <= revealDeadline) {
+            revert RevelationPeriodNotFinished(id, block.number, revealDeadline);
+        }
+        register.removeMe();
     }
 
     /**

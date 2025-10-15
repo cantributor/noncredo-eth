@@ -170,7 +170,7 @@ contract Register is
         }
         riddles.pop();
         riddle.user().remove(riddle);
-        riddle.finalize();
+        riddle.goodbye();
         emit IRiddle.RiddleRemoved(address(riddle.user()), address(riddle), riddle.id());
     }
 
@@ -351,7 +351,7 @@ contract Register is
         bool isRiddle = ERC165Checker.supportsInterface(riddleAddress, type(IRiddle).interfaceId);
         if (isRiddle) {
             IRiddle riddle = IRiddle(riddleAddress);
-            return riddles[riddle.index()] == riddle;
+            return riddle.index() < riddles.length && riddles[riddle.index()] == riddle;
         } else {
             return false;
         }
