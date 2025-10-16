@@ -171,7 +171,7 @@ contract Register is
         riddles.pop();
         riddle.user().remove(riddle);
         riddle.goodbye();
-        emit IRiddle.RiddleRemoved(address(riddle.user()), address(riddle), riddle.id());
+        emit IRiddle.RiddleRemoved(address(riddle.user()), address(riddle), tx.origin, riddle.id());
     }
 
     /**

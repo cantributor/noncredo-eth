@@ -104,7 +104,7 @@ contract RiddleTest is Test {
         registerProxy.setGuessAndRevealDuration(Utils.MIN_DURATION, Utils.MIN_DURATION);
 
         vm.deal(payable(registerProxy), 0);
-        vm.deal(RIDDLING, 0);
+        vm.deal(RIDDLING, 1000);
         vm.deal(GUESSING_1, 1000);
         vm.deal(GUESSING_2, 2000);
         vm.deal(GUESSING_3, 1000);
@@ -205,6 +205,10 @@ contract RiddleTest is Test {
         vm.prank(RIDDLING);
         vm.expectRevert(encodedEnforcedPause);
         riddle.remove();
+
+        vm.prank(RIDDLING);
+        vm.expectRevert(encodedEnforcedPause);
+        riddle.finalize();
     }
 
     function test_guess_Successful() public {
@@ -295,17 +299,34 @@ contract RiddleTest is Test {
         riddle.reveal(USER_SECRET_KEY);
     }
 
-    function test_reveal_Successful_NoGuesses() public {
-        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+    function test_reveal_Successful_NoGuessesButSponsorPayment() public {
+        IRiddle riddle = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
+        (bool success,) = address(riddle).call{value: 1000}("");
+        assertTrue(success);
+        assertEq(0, RIDDLING.balance);
+        assertEq(2000, payable(riddle).balance);
+        assertFalse(riddle.finished());
+        assertFalse(riddle.revelation());
+        assertEq(1, registerProxy.totalRiddles());
 
         vm.roll(riddle.guessDeadline() + 1);
-        vm.prank(RIDDLING);
+
         vm.expectEmit(true, true, false, true);
-        emit IRiddle.GuessRevealed(address(riddle), RIDDLING, 1, true, 0);
+        emit IRiddle.GuessRevealed(address(riddle), RIDDLING, 1, true, 1000);
+        vm.expectEmit(true, true, false, true);
+        emit IRiddle.RewardPayed(address(riddle), RIDDLING, 2000);
+        vm.expectEmit(true, true, true, true);
+        emit IRiddle.RiddleRemoved(address(riddling), address(riddle), RIDDLING, 1);
+
+        vm.prank(RIDDLING, RIDDLING);
         riddle.reveal(USER_SECRET_KEY);
+
         assertEq(0, payable(riddle).balance);
-        assertEq(0, RIDDLING.balance);
+        assertEq(2000, RIDDLING.balance);
         assertEq(0, payable(registerProxy).balance);
+        assertTrue(riddle.finished());
+        assertTrue(riddle.revelation());
+        assertEq(0, registerProxy.totalRiddles());
     }
 
     function test_reveal_Successful_WithSponsorPayment() public {
@@ -403,7 +424,7 @@ contract RiddleTest is Test {
     }
 
     function test_remove_Successful() public {
-        IRiddle riddle1 = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+        IRiddle riddle1 = util_CreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
         IRiddle riddle2 = util_CreateRiddle("I am superman!", true, 0, USER_SECRET_KEY);
 
         vm.prank(GUESSING_1);
@@ -413,13 +434,23 @@ contract RiddleTest is Test {
         vm.prank(GUESSING_3);
         riddle1.guess{value: 1000}(103);
 
+        (bool success,) = address(riddle1).call{value: 1000}(""); // sponsor payment
+        assertTrue(success);
+
+        assertEq(0, RIDDLING.balance);
+        assertEq(0, GUESSING_1.balance);
+        assertEq(0, GUESSING_2.balance);
+        assertEq(0, GUESSING_3.balance);
+        assertEq(6000, payable(riddle1).balance);
+
         assertEq(2, registerProxy.totalRiddles());
         assertEq(2, riddling.totalRiddles());
+        assertEq(0, riddle1.index());
         assertEq(1, riddle2.index());
 
-        vm.expectEmit(true, true, false, true);
-        emit IRiddle.RiddleRemoved(address(riddling), address(riddle1), 1);
-        vm.prank(RIDDLING);
+        vm.expectEmit(true, true, true, true);
+        emit IRiddle.RiddleRemoved(address(riddling), address(riddle1), RIDDLING, 1);
+        vm.prank(RIDDLING, RIDDLING);
         riddle1.remove();
 
         assertEq(1, registerProxy.totalRiddles());
@@ -429,8 +460,8 @@ contract RiddleTest is Test {
 
         // all bets rolled back
         assertEq(0, payable(riddle1).balance);
-        assertEq(0, payable(registerProxy).balance);
-        assertEq(0, RIDDLING.balance);
+        assertEq(1000, payable(registerProxy).balance); // sponsor payment returned to register
+        assertEq(1000, RIDDLING.balance);
         assertEq(1000, GUESSING_1.balance);
         assertEq(2000, GUESSING_2.balance);
         assertEq(1000, GUESSING_3.balance);

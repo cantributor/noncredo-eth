@@ -198,6 +198,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         uint256 loserBetsSum = 0;
         uint256 refunds = address(this).balance;
         if (determined) {
+            refunds = 0;
             for (uint32 i = 0; i < guesses.length; i++) {
                 if (guesses[i].revealed) {
                     if (guesses[i].credo == credo) winnerBetsSum += guesses[i].bet;
@@ -230,7 +231,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
      */
     function goodbye() external virtual override onlyForRegister {
         (bool determined, bool credo) = (false, false);
-        if (block.number > revealDeadline) {
+        if (block.number > revealDeadline || allGuessesRevealed()) {
             (determined, credo) = poll();
         }
         (uint256 winnerBetsSum, uint256 prize) = calculate(determined, credo);

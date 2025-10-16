@@ -107,9 +107,12 @@ interface IRiddle {
      * @dev Riddle successfully removed
      * @param userAddress User contract address
      * @param riddleAddress Riddle contract address
+     * @param txOrigin Transaction origin
      * @param id Riddle id
      */
-    event RiddleRemoved(address indexed userAddress, address indexed riddleAddress, uint32 id);
+    event RiddleRemoved(
+        address indexed userAddress, address indexed riddleAddress, address indexed txOrigin, uint32 id
+    );
 
     /**
      * @dev Riddle guess successfully registered
@@ -185,6 +188,10 @@ interface IRiddle {
     function revealDeadline() external view returns (uint256);
 
     function index() external view returns (uint32);
+
+    function finished() external view returns (bool);
+
+    function revelation() external view returns (bool);
 
     /**
      * @dev Set index of riddle (should be implemented with onlyForUser modifier)

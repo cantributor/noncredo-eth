@@ -91,8 +91,8 @@ contract UserTest is Test {
         assertEq(1, registerProxy.totalUsers());
         assertEq(1, registerProxy.totalRiddles());
         vm.prank(USER, USER);
-        vm.expectEmit(true, true, false, true);
-        emit IRiddle.RiddleRemoved(address(user), address(riddle), 1);
+        vm.expectEmit(true, true, true, true);
+        emit IRiddle.RiddleRemoved(address(user), address(riddle), USER, 1);
         vm.expectEmit(true, true, true, false);
         emit IUser.UserRemoved(USER, "user", USER);
         user.remove();

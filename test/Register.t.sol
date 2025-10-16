@@ -307,20 +307,25 @@ contract RegisterTest is Test {
     }
 
     function test_removeRiddle() public {
+        vm.deal(OWNER, 1000);
+
+        vm.startPrank(OWNER);
         IUser user = registerProxy.registerMeAs("user");
         IRiddle riddle1 = user.commit("I am superman #1!", 101);
-        IRiddle riddle2 = user.commit("I am superman #2!", 101);
+        IRiddle riddle2 = user.commit{value: 1000}("I am superman #2!", 101);
         IRiddle riddle3 = user.commit("I am superman #3!", 101);
+        vm.stopPrank();
 
         assertEq(3, registerProxy.totalRiddles());
         assertEq(3, user.totalRiddles());
         assertEq(0, riddle1.index());
         assertEq(1, riddle2.index());
         assertEq(2, riddle3.index());
+        assertEq(0, OWNER.balance);
 
-        vm.expectEmit(true, true, false, true);
-        emit IRiddle.RiddleRemoved(address(user), address(riddle2), 2);
-        vm.prank(USER_ADMIN);
+        vm.expectEmit(true, true, true, true);
+        emit IRiddle.RiddleRemoved(address(user), address(riddle2), USER_ADMIN, 2);
+        vm.prank(USER_ADMIN, USER_ADMIN);
         registerProxy.remove(address(riddle2));
 
         assertEq(2, registerProxy.totalRiddles());
@@ -330,9 +335,12 @@ contract RegisterTest is Test {
         assertEq(1, riddle2.index());
         assertEq(1, riddle3.index());
         assertEq(address(riddle3), address(registerProxy.riddles(1)));
+        assertEq(1000, OWNER.balance);
 
         // below commit is possible because Register.riddleByStatement cleaned from riddle2.statement
-        user.commit(riddle2.statement(), 101);
+        vm.startPrank(OWNER);
+        user.commit(riddle2.statement(), 103);
+        vm.stopPrank();
     }
 
     function test_removeMe_RevertWhen_IllegalCaller() public {
