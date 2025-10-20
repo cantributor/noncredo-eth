@@ -6,7 +6,6 @@ import {Script, console} from "forge-std/Script.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
 import {Register} from "src/Register.sol";
-import {Riddle} from "src/Riddle.sol";
 
 import {Utils} from "src/Utils.sol";
 

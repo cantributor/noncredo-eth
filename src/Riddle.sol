@@ -53,7 +53,9 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         index = _index;
         user = _user;
         statement = _statement;
-        Guess memory ownerGuess = Guess(_user.owner(), _encryptedCredo, msg.value, false, false);
+        Guess memory ownerGuess = Guess({
+            account: _user.owner(), encryptedCredo: _encryptedCredo, bet: msg.value, revealed: false, credo: false
+        });
         guesses.push(ownerGuess);
 
         IRegister reg = user.register();
@@ -67,10 +69,14 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
      * @dev Throws if called by any account other than the Register contract remembered in User.registerAddress
      */
     modifier onlyForRegister() {
+        _onlyForRegister();
+        _;
+    }
+
+    function _onlyForRegister() internal view {
         if (msg.sender != user.registerAddress()) {
             revert IRegister.OnlyRegisterMayCallThis(msg.sender);
         }
-        _;
     }
 
     function setIndex(uint32 _index) external virtual override onlyForRegister {
@@ -94,20 +100,15 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         if (guessIndex < guesses.length) {
             revert GuessOfSenderAlreadyExists(id, foundGuess.account, guessIndex);
         }
-        _guess = Guess(msgSender, encryptedCredo, msg.value, false, false);
+        _guess =
+            Guess({account: msgSender, encryptedCredo: encryptedCredo, bet: msg.value, revealed: false, credo: false});
         guesses.push(_guess);
         emit GuessRegistered(address(this), msgSender, id, encryptedCredo, msg.value);
         return _guess;
     }
 
-    function guessOf(address sender)
-        external
-        view
-        virtual
-        override
-        returns (Guess memory _guess, uint256 _guessIndex)
-    {
-        _guess = Guess(address(0), 0, 0, false, false);
+    function guessOf(address sender) external view virtual override returns (Guess memory _guess, uint256 _guessIndex) {
+        _guess = Guess({account: address(0), encryptedCredo: 0, bet: 0, revealed: false, credo: false});
         _guessIndex;
         for (_guessIndex = 0; _guessIndex < guesses.length; _guessIndex++) {
             if (guesses[_guessIndex].account == sender) {

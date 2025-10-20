@@ -25,6 +25,7 @@ import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {ERC2771ForwarderUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ForwarderUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {EfficientHashLib} from "solady/utils/EfficientHashLib.sol";
 
 contract UserTest is Test {
     IAccessManager private accessManager;
@@ -164,7 +165,9 @@ contract UserTest is Test {
         vm.deal(USER, 1000);
 
         vm.expectEmit(true, false, false, true);
-        emit IRiddle.RiddleRegistered(address(user1), address(0), 1, keccak256(abi.encode(TYPICAL_RIDDLE_STATEMENT)));
+        emit IRiddle.RiddleRegistered(
+            address(user1), address(0), 1, EfficientHashLib.hash(bytes(TYPICAL_RIDDLE_STATEMENT))
+        );
 
         uint256 currentBlockNumber = block.number;
         console.log("Current block number", currentBlockNumber);
@@ -227,7 +230,7 @@ contract UserTest is Test {
 
         assertEq(0, user1.indexOf(riddle1));
         assertEq(1, user1.indexOf(riddle2));
-        assertEq(-1, user1.indexOf(riddle3));
+        assertEq(type(uint256).max, user1.indexOf(riddle3));
 
         assertEq(0, user2.indexOf(riddle3));
     }

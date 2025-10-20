@@ -9,6 +9,6 @@ contract RiddleV2 is Riddle {
     constructor(address trustedForwarder) Riddle(trustedForwarder) {}
 
     function guessOf(address sender) external pure override returns (Guess memory _guess, uint256 _guessIndex) {
-        return (Guess(sender, 101, 0, false, false), 777);
+        return (Guess({account: sender, encryptedCredo: 101, bet: 0, revealed: false, credo: false}), 777);
     }
 }

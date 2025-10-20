@@ -8,6 +8,7 @@ forge-std = "1.10.0"
 "@openzeppelin-contracts" = "5.4.0"
 "@openzeppelin-contracts-upgradeable" = "5.4.0"
 openzeppelin-foundry-upgrades = "0.4.0"
+solady = "0.1.26"
 
 [rpc_endpoints]
 anvil = "${ANVIL_RPC_URL}"

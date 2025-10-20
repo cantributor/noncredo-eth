@@ -48,10 +48,14 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
      * @dev Throws if called by any account other than the Register contract remembered in registerAddress
      */
     modifier onlyForRegister() {
+        _onlyForRegister();
+        _;
+    }
+
+    function _onlyForRegister() internal view {
         if (msg.sender != registerAddress) {
             revert IRegister.OnlyRegisterMayCallThis(msg.sender);
         }
-        _;
     }
 
     function commit(string calldata statement, uint256 encryptedSolution)
@@ -88,11 +92,11 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
         return uint32(riddles.length);
     }
 
-    function indexOf(IRiddle riddle) external view virtual override returns (int256 riddleIndex) {
-        riddleIndex = -1;
+    function indexOf(IRiddle riddle) external view virtual override returns (uint256 riddleIndex) {
+        riddleIndex = type(uint256).max;
         for (uint256 i = 0; i < riddles.length; i++) {
             if (riddles[i] == riddle) {
-                riddleIndex = int256(i);
+                riddleIndex = i;
                 break;
             }
         }
@@ -108,8 +112,8 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     }
 
     function goodbye() external virtual override onlyForRegister {
-        for (int256 i = int256(riddles.length) - 1; i >= 0; i--) {
-            riddles[uint256(i)].remove();
+        for (uint256 i = riddles.length; i > 0; i--) {
+            riddles[i - 1].remove();
         }
     }
 
@@ -118,13 +122,12 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     }
 
     function remove(IRiddle riddle) external virtual onlyForRegister {
-        int256 foundRiddleIndex = this.indexOf(riddle);
-        if (foundRiddleIndex < 0) {
+        uint256 foundRiddleIndex = this.indexOf(riddle);
+        if (foundRiddleIndex == type(uint256).max) {
             revert IRiddle.RiddleIsNotRegistered(riddle.id(), address(riddle), _msgSender());
         }
-        uint256 riddleIndex = uint256(foundRiddleIndex);
-        if (riddleIndex < riddles.length - 1) {
-            riddles[riddleIndex] = riddles[riddles.length - 1];
+        if (foundRiddleIndex < riddles.length - 1) {
+            riddles[foundRiddleIndex] = riddles[riddles.length - 1];
         }
         riddles.pop();
     }

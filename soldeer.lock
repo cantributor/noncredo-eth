@@ -25,3 +25,10 @@ version = "0.4.0"
 url = "https://soldeer-revisions.s3.amazonaws.com/openzeppelin-foundry-upgrades/0_4_0_27-01-2025_18:32:41_openzeppelin-foundry-upgrades.zip"
 checksum = "d38121a53a68c9a3e10032d37c712b28604a673c77b7186332f65c423e53cc45"
 integrity = "7453d9ee76f1bbf72424354de766dd2a4af61ec33968b4e0da111e6d734943e2"
+
+[[dependencies]]
+name = "solady"
+version = "0.1.26"
+url = "https://soldeer-revisions.s3.amazonaws.com/solady/0_1_26_25-08-2025_15:30:06_solady.zip"
+checksum = "9872ac7cfd32c1eba32800508a1325c49f4a4aa8c6f670454db91971a583e26b"
+integrity = "5da4b5ca9cbad98812a4b75ad528ff34c72a0b84433204be6d1420c81de1d6ff"

@@ -34,8 +34,7 @@ contract FakeUser is IUser, Ownable, ERC165 {
     }
 
     function initialize(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
-        external
-    {}
+        external {}
 
     function owner() public view virtual override(Ownable, IUser) returns (address) {
         return Ownable.owner();
@@ -56,8 +55,8 @@ contract FakeUser is IUser, Ownable, ERC165 {
         return 0;
     }
 
-    function indexOf(IRiddle) external view virtual returns (int256) {
-        return -1;
+    function indexOf(IRiddle) external view virtual returns (uint256) {
+        return type(uint256).max;
     }
 
     function nickString() external view virtual override returns (string memory) {

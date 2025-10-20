@@ -8,22 +8,21 @@ import {IUser} from "./interfaces/IUser.sol";
 import {Payment} from "./structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "./AccessManagedBeaconHolder.sol";
-import {Roles} from "./Roles.sol";
 import {Utils} from "./Utils.sol";
 
-import {AccessManagerUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
-import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
+import {
+    AccessManagedUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable//utils/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {IRegister} from "./interfaces/IRegister.sol";
+import {EfficientHashLib} from "solady/utils/EfficientHashLib.sol";
 
 /**
  * @title Register
@@ -156,7 +155,7 @@ contract Register is
      * @param riddle Riddle to remove
      */
     function removeRiddle(IRiddle riddle) internal virtual {
-        bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
+        bytes32 statementHash = EfficientHashLib.hash(bytes(riddle.statement()));
         IRiddle foundByStatement = riddleByStatement[statementHash];
         if (address(foundByStatement) == address(0)) {
             revert IRegister.RiddleStatementNotRegistered(riddle.statement());
@@ -219,7 +218,7 @@ contract Register is
     }
 
     function registerRiddle(IRiddle riddle) external virtual whenNotPaused {
-        bytes32 statementHash = keccak256(abi.encode(riddle.statement()));
+        bytes32 statementHash = EfficientHashLib.hash(bytes(riddle.statement()));
         IRiddle foundRiddle = riddleByStatement[statementHash];
         if (address(foundRiddle) != address(0)) {
             revert IRiddle.RiddleAlreadyRegistered(
@@ -382,9 +381,9 @@ contract Register is
         Payment memory payment;
         if (addressIsRegisteredRiddle(msgSender)) {
             IRiddle riddle = IRiddle(msgSender);
-            payment = Payment(msgSender, riddle.id(), msg.value);
+            payment = Payment({payer: msgSender, riddleId: riddle.id(), amount: msg.value});
         } else {
-            payment = Payment(msgSender, 0, msg.value);
+            payment = Payment({payer: msgSender, riddleId: 0, amount: msg.value});
         }
         payments.push(payment);
         emit IRegister.PaymentReceived(payment.payer, payment.riddleId, payment.amount);

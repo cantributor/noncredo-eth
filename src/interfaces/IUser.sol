@@ -63,7 +63,7 @@ interface IUser {
      * @param riddle Riddle to find
      * @return riddleIndex Riddle index in riddles array
      */
-    function indexOf(IRiddle riddle) external view returns (int256 riddleIndex);
+    function indexOf(IRiddle riddle) external view returns (uint256 riddleIndex);
 
     /**
      * @dev Get nick as string
