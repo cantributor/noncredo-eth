@@ -266,6 +266,18 @@ contract RegisterTest is Test {
 
         assertEq(3, registerProxy.totalUsers());
 
+        vm.deal(address(102), 1000);
+        vm.deal(address(103), 1000);
+
+        vm.prank(address(102));
+        IRiddle riddle = user2.commit{value: 1000}("I am superman!", 101);
+        vm.prank(address(103));
+        riddle.guess{value: 1000}(101);
+        assertEq(1, registerProxy.totalRiddles());
+
+        assertEq(0, address(102).balance);
+        assertEq(0, address(103).balance);
+
         assertEq(address(user1), address(utilUserOf("user1")));
         assertEq(0, utilUserOf("user1").index());
 
@@ -299,6 +311,10 @@ contract RegisterTest is Test {
 
         assertEq(0, utilUserOf("user1").index());
         assertEq(1, utilUserOf("user3").index());
+
+        assertEq(1000, address(102).balance);
+        assertEq(1000, address(103).balance);
+        assertEq(0, registerProxy.totalRiddles());
     }
 
     function test_removeRiddle() public {

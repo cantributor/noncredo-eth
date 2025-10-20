@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import {IRegister} from "../src/interfaces/IRegister.sol";
 import {IRiddle} from "../src/interfaces/IRiddle.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
 import {Guess} from "../src/structs/Guess.sol";
+import {Payment} from "../src/structs/Payment.sol";
 
 import {AccessManagedBeaconHolder} from "src/AccessManagedBeaconHolder.sol";
 import {ERC2771Forwarder} from "src/ERC2771Forwarder.sol";
@@ -84,7 +85,7 @@ contract RiddleTest is Test {
 
         vm.startPrank(FINANCE_ADMIN);
         registerProxy.setGuessAndRevealDuration(Utils.MIN_DURATION, Utils.MIN_DURATION);
-        registerProxy.setRegisterReward(1);
+        registerProxy.setRegisterReward(10);
         vm.stopPrank();
 
         riddleV2Impl = new RiddleV2(address(erc2771Forwarder));
@@ -327,98 +328,167 @@ contract RiddleTest is Test {
         assertEq(0, registerProxy.totalRiddles());
     }
 
-    function test_reveal_Successful_WithSponsorPayment() public {
+    function test_reveal_Successful_IncorrectGuessWithSponsorPayment() public {
+        vm.deal(RIDDLING, 0);
         IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
         (bool success,) = address(riddle).call{value: 1000}("");
         assertTrue(success);
-
-        vm.roll(riddle.guessDeadline() + 1);
-        vm.prank(RIDDLING);
-        riddle.reveal(USER_SECRET_KEY);
-        //        assertEq(0, payable(riddle).balance);
-        //        assertEq(90, RIDDLING.balance);
-        //        assertEq(910, payable(registerProxy).balance);
-    }
-
-    function test_reveal_Successful_IncorrectGuess() public {
-        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
-
         utilGuessRiddle(riddle, GUESSING_1, false, 1000);
 
+        assertEq(0, RIDDLING.balance);
+        assertEq(0, GUESSING_1.balance);
+        assertEq(2000, payable(riddle).balance);
+        assertEq(1, registerProxy.totalRiddles());
+
         vm.roll(riddle.guessDeadline() + 1);
 
-        //        vm.expectEmit(true, true, false, true);
-        //        emit IRiddle.RewardPayed(address(riddle), RIDDLING, 90);
-        //        vm.expectEmit(true, true, false, true);
-        //        emit IRegister.PaymentReceived(address(riddle), 1, 910);
-        //        vm.expectEmit(true, true, false, true);
-        //        emit IRiddle.RewardPayed(address(riddle), payable(registerProxy), 910);
-        //
+        vm.prank(GUESSING_1);
+        riddle.reveal(USER_SECRET_KEY);
         vm.prank(RIDDLING);
         riddle.reveal(USER_SECRET_KEY);
-        //        assertEq(0, payable(riddle).balance);
-        //        assertEq(910, payable(registerProxy).balance);
-        //        assertEq(90, RIDDLING.balance);
-        //        assertEq(0, GUESSING_1.balance);
 
-        //        Payment[] memory payments = registerProxy.paymentsArray();
-        //        assertEq(1, payments.length);
-        //        assertEq(910, payments[0].amount);
-        //        assertEq(1, payments[0].riddleId);
-        //        assertEq(address(riddle), payments[0].payer);
+        assertEq(0, payable(riddle).balance);
+        assertEq(1000, payable(registerProxy).balance);
+        assertEq(0, RIDDLING.balance);
+        assertEq(1000, GUESSING_1.balance);
+
+        Payment[] memory payments = registerProxy.paymentsArray();
+        assertEq(1, payments.length);
+        assertEq(1000, payments[0].amount);
+        assertEq(1, payments[0].riddleId);
+        assertEq(address(riddle), payments[0].payer);
+
+        assertEq(0, registerProxy.totalRiddles());
     }
 
     function test_reveal_Successful_CorrectGuess() public {
-        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, false, 1000, USER_SECRET_KEY);
+        utilGuessRiddle(riddle, GUESSING_1, false, 1000);
 
-        utilGuessRiddle(riddle, GUESSING_1, true, 1000);
+        assertEq(0, RIDDLING.balance);
+        assertEq(0, GUESSING_1.balance);
+        assertEq(2000, payable(riddle).balance);
+        assertEq(1, registerProxy.totalRiddles());
 
         vm.roll(riddle.guessDeadline() + 1);
+
         vm.prank(RIDDLING);
         riddle.reveal(USER_SECRET_KEY);
-        //        assertEq(0, payable(riddle).balance);
-        //        assertEq(0, payable(registerProxy).balance);
-        //        assertEq(0, RIDDLING.balance);
-        //        assertEq(1000, GUESSING_1.balance);
+        vm.prank(GUESSING_1);
+        riddle.reveal(USER_SECRET_KEY);
+
+        assertEq(0, payable(riddle).balance);
+        assertEq(0, payable(registerProxy).balance);
+        assertEq(1000, RIDDLING.balance);
+        assertEq(1000, GUESSING_1.balance);
+
+        assertEq(0, registerProxy.totalRiddles());
     }
 
     function test_reveal_Successful_CorrectGuessWithSponsorPayment() public {
-        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
         (bool success,) = address(riddle).call{value: 1000}("");
         assertTrue(success);
-
         utilGuessRiddle(riddle, GUESSING_1, true, 1000);
+
+        assertEq(0, RIDDLING.balance);
+        assertEq(0, GUESSING_1.balance);
+        assertEq(3000, payable(riddle).balance);
+        assertEq(1, registerProxy.totalRiddles());
 
         vm.roll(riddle.guessDeadline() + 1);
+
+        vm.prank(GUESSING_1);
+        riddle.reveal(USER_SECRET_KEY);
         vm.prank(RIDDLING);
         riddle.reveal(USER_SECRET_KEY);
-        //        assertEq(0, payable(riddle).balance);
-        //        assertEq(10, payable(registerProxy).balance);
-        //        assertEq(90, RIDDLING.balance);
-        //        assertEq(1900, GUESSING_1.balance);
+
+        assertEq(0, payable(riddle).balance);
+        assertEq(0, payable(registerProxy).balance);
+        assertEq(1500, RIDDLING.balance);
+        assertEq(1500, GUESSING_1.balance);
+
+        assertEq(0, registerProxy.totalRiddles());
     }
 
-    function test_reveal_Successful_CorrectAndIncorrectGuesses() public {
+    function test_finalize_RevertWhen_RevelationPeriodNotFinished() public {
         IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
-        utilGuessRiddle(riddle, GUESSING_1, true, 1000);
+        vm.roll(riddle.guessDeadline() + 1);
+
+        vm.prank(GUESSING_1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IRiddle.RevelationPeriodNotFinished.selector, 1, block.number, riddle.revealDeadline()
+            )
+        );
+        riddle.finalize();
+    }
+
+    function test_finalize_Successful_NoGuessesButSponsorPayment() public {
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
+        (bool success,) = address(riddle).call{value: 1000}("");
+        assertTrue(success);
+        assertEq(0, RIDDLING.balance);
+        assertEq(2000, payable(riddle).balance);
+        assertFalse(riddle.finished());
+        assertFalse(riddle.revelation());
+        assertEq(1, registerProxy.totalRiddles());
+
+        vm.roll(riddle.revealDeadline() + 1);
+
+        vm.expectEmit(true, true, false, true);
+        emit IRiddle.RewardPayed(address(riddle), RIDDLING, 1000);
+        vm.expectEmit(true, true, false, true);
+        emit IRiddle.RewardPayed(address(riddle), address(registerProxy), 1000);
+        vm.expectEmit(true, true, true, true);
+        emit IRiddle.RiddleRemoved(address(riddling), address(riddle), GUESSING_1, 1);
+
+        vm.prank(GUESSING_1, GUESSING_1);
+        riddle.finalize();
+
+        assertEq(0, payable(riddle).balance);
+        assertEq(1000, RIDDLING.balance);
+        assertEq(1000, payable(registerProxy).balance);
+        assertTrue(riddle.finished());
+        assertFalse(riddle.revelation());
+        assertEq(0, registerProxy.totalRiddles());
+    }
+
+    function test_finalize_Successful_CorrectAndIncorrectGuesses() public {
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
+
+        utilGuessRiddle(riddle, GUESSING_1, false, 1000);
         utilGuessRiddle(riddle, GUESSING_2, true, 2000);
         utilGuessRiddle(riddle, GUESSING_3, false, 1000);
 
-        vm.roll(riddle.guessDeadline() + 1);
+        assertEq(0, RIDDLING.balance);
+        assertEq(0, GUESSING_1.balance);
+        assertEq(0, GUESSING_2.balance);
+        assertEq(0, GUESSING_3.balance);
+        assertEq(5000, payable(riddle).balance);
+        assertEq(1, registerProxy.totalRiddles());
+
+        vm.roll(riddle.revealDeadline() + 1);
+
         vm.prank(RIDDLING);
         riddle.reveal(USER_SECRET_KEY);
-        console.log("Register.balance", payable(registerProxy).balance);
-        console.log("RIDDLING.balance", RIDDLING.balance);
-        console.log("GUESSING_1.balance", GUESSING_1.balance);
-        console.log("GUESSING_2.balance", GUESSING_2.balance);
-        console.log("GUESSING_3.balance", GUESSING_3.balance);
-        //        assertEq(0, payable(riddle).balance);
-        //        assertEq(10, payable(registerProxy).balance);
-        //        assertEq(90, RIDDLING.balance);
-        //        assertEq(1300, GUESSING_1.balance);
-        //        assertEq(2600, GUESSING_2.balance);
-        //        assertEq(0, GUESSING_3.balance);
+        vm.prank(GUESSING_1);
+        riddle.reveal(USER_SECRET_KEY);
+        vm.prank(GUESSING_2);
+        riddle.reveal(USER_SECRET_KEY);
+
+        vm.prank(GUESSING_1);
+        riddle.finalize();
+
+        assertEq(0, payable(riddle).balance);
+        assertEq(100, payable(registerProxy).balance);
+        assertEq(1300, RIDDLING.balance);
+        assertEq(0, GUESSING_1.balance);
+        assertEq(2600, GUESSING_2.balance);
+        assertEq(1000, GUESSING_3.balance);
+
+        assertEq(0, registerProxy.totalRiddles());
     }
 
     function test_remove_Successful() public {

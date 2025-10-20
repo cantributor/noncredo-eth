@@ -86,20 +86,29 @@ contract UserTest is Test {
     }
 
     function test_remove_Successful() public {
-        IUser user = registerProxy.registerMeAs("user"); // owner: USER
-        IRiddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
+        vm.deal(OWNER, 1000);
+        vm.startPrank(OWNER);
+        IUser user = registerProxy.registerMeAs("owner");
+        IRiddle riddle = user.commit{value: 1000}(TYPICAL_RIDDLE_STATEMENT, 101);
+        vm.stopPrank();
+        assertEq(0, OWNER.balance);
 
         assertEq(1, registerProxy.totalUsers());
         assertEq(1, registerProxy.totalRiddles());
-        vm.prank(USER, USER);
-        vm.expectEmit(true, true, true, true);
-        emit IRiddle.RiddleRemoved(address(user), address(riddle), USER, 1);
+
         vm.expectEmit(true, true, true, false);
-        emit IUser.UserRemoved(USER, "user", USER);
+        emit IRiddle.RewardPayed(address(riddle), OWNER, 1000);
+        vm.expectEmit(true, true, true, true);
+        emit IRiddle.RiddleRemoved(address(user), address(riddle), OWNER, 1);
+        vm.expectEmit(true, true, true, false);
+        emit IUser.UserRemoved(OWNER, "owner", OWNER);
+
+        vm.prank(OWNER, OWNER);
         user.remove();
 
         assertEq(0, registerProxy.totalUsers());
         assertEq(0, registerProxy.totalRiddles());
+        assertEq(1000, OWNER.balance);
     }
 
     function test_RevertWhen_NotOwnerCalls() public {

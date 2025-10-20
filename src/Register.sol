@@ -158,6 +158,7 @@ contract Register is
         if (address(foundByStatement) == address(0)) {
             revert IRegister.RiddleStatementNotRegistered(riddle.statement());
         }
+        riddle.goodbye();
         delete riddleByStatement[statementHash];
         // check for existence in riddles already done in addressIsRegisteredRiddle(payable)
         uint32 riddleIndex = riddle.index();
@@ -167,7 +168,6 @@ contract Register is
         }
         riddles.pop();
         riddle.user().remove(riddle);
-        riddle.goodbye();
         emit IRiddle.RiddleRemoved(address(riddle.user()), address(riddle), tx.origin, riddle.id());
     }
 
