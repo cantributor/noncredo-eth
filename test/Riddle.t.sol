@@ -84,7 +84,7 @@ contract RiddleTest is Test {
 
         vm.startPrank(FINANCE_ADMIN);
         registerProxy.setGuessAndRevealDuration(Utils.MIN_DURATION, Utils.MIN_DURATION);
-        registerProxy.setRegisterAndRiddlingRewards(1, 9);
+        registerProxy.setRegisterReward(1);
         vm.stopPrank();
 
         riddleV2Impl = new RiddleV2(address(erc2771Forwarder));

@@ -105,7 +105,6 @@ interface IRegister {
     function revealDurationBlocks() external returns (uint32);
 
     function registerRewardPercent() external view returns (uint8);
-    function riddlingRewardPercent() external view returns (uint8);
 
     function riddles(uint256) external view returns (IRiddle);
     function users(uint256) external view returns (IUser);
@@ -189,9 +188,8 @@ interface IRegister {
     /**
      * @dev Set register & riddling rewards (in percents)
      * @param _registerReward New register reward percent value
-     * @param _riddlingReward New riddling reward percent value
      */
-    function setRegisterAndRiddlingRewards(uint8 _registerReward, uint8 _riddlingReward) external;
+    function setRegisterReward(uint8 _registerReward) external;
 
     /**
      * @dev Get payments array

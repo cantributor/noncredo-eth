@@ -91,7 +91,7 @@ contract RegisterTest is Test {
         registerProxy.setGuessAndRevealDuration(1, 1);
 
         vm.expectRevert(encodedUnauthorized);
-        registerProxy.setRegisterAndRiddlingRewards(0, 0);
+        registerProxy.setRegisterReward(0);
 
         vm.expectRevert(encodedUnauthorized);
         registerProxy.pause();
@@ -119,7 +119,7 @@ contract RegisterTest is Test {
         registerProxy.remove(address(owner));
 
         vm.expectRevert(encodedEnforcedPause);
-        registerProxy.setRegisterAndRiddlingRewards(0, 0);
+        registerProxy.setRegisterReward(0);
 
         vm.expectRevert(encodedEnforcedPause);
         registerProxy.setGuessAndRevealDuration(0, 0);

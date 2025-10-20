@@ -20,12 +20,11 @@ contract ScenarioUserCommit is Script {
         vm.broadcast(ownerPrivateKey);
         registerProxy.setGuessAndRevealDuration(1, 1);
         vm.broadcast(ownerPrivateKey);
-        registerProxy.setRegisterAndRiddlingRewards(1, 9);
+        registerProxy.setRegisterReward(1);
 
         console.log("Guess minimum duration (blocks):", registerProxy.guessDurationBlocks());
         console.log("Reveal minimum duration (blocks):", registerProxy.revealDurationBlocks());
         console.log("Register reward (%):", registerProxy.registerRewardPercent());
-        console.log("Riddling reward (%):", registerProxy.riddlingRewardPercent());
 
         string memory statement = "I am killer!";
         uint256 encryptedSolution = Utils.encryptCredo(statement, false, "secret");

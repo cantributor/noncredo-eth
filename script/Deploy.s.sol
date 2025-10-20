@@ -135,11 +135,9 @@ contract DeployScript is Script {
         setGuessAndRevealDurationSelector[0] = bytes4(keccak256("setGuessAndRevealDuration(uint32,uint32)"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, setGuessAndRevealDurationSelector, Roles.FINANCE_ADMIN_ROLE);
 
-        bytes4[] memory setRegisterAndRiddlingRewardsSelector = new bytes4[](1);
-        setRegisterAndRiddlingRewardsSelector[0] = bytes4(keccak256("setRegisterAndRiddlingRewards(uint8,uint8)"));
-        accessMgr.setTargetFunctionRole(
-            registerProxyAddr, setRegisterAndRiddlingRewardsSelector, Roles.FINANCE_ADMIN_ROLE
-        );
+        bytes4[] memory setRegisterRewardSelector = new bytes4[](1);
+        setRegisterRewardSelector[0] = bytes4(keccak256("setRegisterReward(uint8)"));
+        accessMgr.setTargetFunctionRole(registerProxyAddr, setRegisterRewardSelector, Roles.FINANCE_ADMIN_ROLE);
 
         bytes4[] memory withdrawSelector = new bytes4[](1);
         withdrawSelector[0] = bytes4(keccak256("withdraw(address)"));

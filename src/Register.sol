@@ -54,7 +54,6 @@ contract Register is
     uint32 public revealDurationBlocks;
 
     uint8 public registerRewardPercent;
-    uint8 public riddlingRewardPercent;
 
     IRiddle[] public riddles;
     mapping(bytes32 statementHash => IRiddle) internal riddleByStatement;
@@ -73,7 +72,6 @@ contract Register is
         guessDurationBlocks = 3 * 24 * 60 * 60 / 12; // 3 days * 24 hours * 60 minutes * 60 seconds / 12 sec per block
         revealDurationBlocks = 24 * 60 * 60 / 12; // 24 hours * 60 minutes * 60 seconds / 12 sec per block
         registerRewardPercent = 1;
-        riddlingRewardPercent = 10;
     }
 
     function userOf(address account) external virtual returns (IUser) {
@@ -245,16 +243,9 @@ contract Register is
         revealDurationBlocks = _revealDuration;
     }
 
-    function setRegisterAndRiddlingRewards(uint8 _registerReward, uint8 _riddlingReward)
-        external
-        virtual
-        whenNotPaused
-        restricted
-    {
+    function setRegisterReward(uint8 _registerReward) external virtual whenNotPaused restricted {
         Utils.validatePercent(_registerReward);
-        Utils.validatePercent(_riddlingReward);
         registerRewardPercent = _registerReward;
-        riddlingRewardPercent = _riddlingReward;
     }
 
     function paymentsArray() external view virtual returns (Payment[] memory) {

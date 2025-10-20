@@ -6,7 +6,6 @@ echo ---------------------------------------------------------------------------
 echo guess duration \(blocks\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "guessDurationBlocks()(uint32)" --rpc-url $ANVIL_RPC_URL)
 echo reveal duration \(blocks\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "revealDurationBlocks()(uint32)" --rpc-url $ANVIL_RPC_URL)
 echo register reward \(%\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "registerRewardPercent()(uint8)" --rpc-url $ANVIL_RPC_URL)
-echo riddling reward \(%\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "riddlingRewardPercent()(uint8)" --rpc-url $ANVIL_RPC_URL)
 echo -------------------------------------------------------------------------------------------------------------------
 OWNER_CONTRACT_ADDRESS=$(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" owner --rpc-url $ANVIL_RPC_URL)
 USER1_CONTRACT_ADDRESS=$(cast call $ANVIL_REGISTER_PROXY_ADDRESS "userOf(string)(address)" user1 --rpc-url $ANVIL_RPC_URL)
