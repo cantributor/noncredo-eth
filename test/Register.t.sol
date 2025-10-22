@@ -219,8 +219,8 @@ contract RegisterTest is Test {
     }
 
     function test_registerMeAs_Successful() public {
-        vm.expectEmit(true, true, false, false);
-        emit IUser.UserRegistered(address(USER), "user");
+        vm.expectEmit(false, true, true, false);
+        emit IUser.UserRegistered(address(0), address(USER), "user");
 
         IUser user = registerProxy.registerMeAs("user");
 
@@ -267,8 +267,8 @@ contract RegisterTest is Test {
         assertEq(address(user3), address(utilUserOf("user3")));
         assertEq(2, utilUserOf("user3").index());
 
-        vm.expectEmit(true, true, true, false);
-        emit IUser.UserRemoved(address(102), "user2", USER_ADMIN);
+        vm.expectEmit(true, true, true, true);
+        emit IUser.UserRemoved(address(user2), address(102), "user2", USER_ADMIN);
 
         vm.prank(USER_ADMIN, USER_ADMIN);
         registerProxy.remove(address(user2));

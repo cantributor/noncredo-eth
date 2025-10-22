@@ -79,8 +79,8 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
     }
 
     function _onlyForRegister() internal view {
-        if (msg.sender != user.registerAddress()) {
-            revert IRegister.OnlyRegisterMayCallThis(msg.sender);
+        if (_msgSender() != user.registerAddress()) {
+            revert IRegister.OnlyRegisterMayCallThis(_msgSender());
         }
     }
 
@@ -124,6 +124,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         guesses.push(_guess);
         if (rating < type(int16).max) {
             rating++;
+            user.praise();
         }
         emit GuessRegistered(address(this), msgSender, id, encryptedCredo, msg.value, rating);
         return _guess;
@@ -316,6 +317,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         }
         dislikers.push(msgSender);
         rating--;
+        user.scold();
         emit RiddleDislike(address(this), msgSender, id, rating);
         int16 riddleBanThreshold = -int16(uint16(register.riddleBanThreshold()));
         if (rating <= riddleBanThreshold) {

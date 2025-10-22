@@ -24,6 +24,7 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     ShortString public nick;
     uint32 public index;
+    int8 public rating;
     address payable public registerAddress;
 
     IRiddle[] public riddles;
@@ -42,6 +43,7 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
         nick = _nick;
         index = _index;
         registerAddress = _registerAddress;
+        rating = 0;
     }
 
     /**
@@ -53,8 +55,25 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     }
 
     function _onlyForRegister() internal view {
-        if (msg.sender != registerAddress) {
-            revert IRegister.OnlyRegisterMayCallThis(msg.sender);
+        if (_msgSender() != registerAddress) {
+            revert IRegister.OnlyRegisterMayCallThis(_msgSender());
+        }
+    }
+
+    /**
+     * @dev Throws if called by any account other than the Riddle contract remembered in riddles
+     */
+    modifier onlyForRiddle() {
+        _onlyForRiddle();
+        _;
+    }
+
+    function _onlyForRiddle() internal view {
+        if (
+            !Utils.addressIsRegisteredRiddle(payable(_msgSender()), register())
+                || this.indexOf(IRiddle(payable(_msgSender()))) == type(uint256).max
+        ) {
+            revert IUser.OnlyRiddleMayCallThis(_msgSender());
         }
     }
 
@@ -136,6 +155,24 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
         return IRegister(registerAddress);
     }
 
+    function praise() external virtual override onlyForRiddle returns (int8) {
+        if (rating < type(int8).max) {
+            emit IUser.UserRatingChanged(
+                address(this), this.owner(), this.nickString(), ++rating, address(_msgSender())
+            );
+        }
+        return rating;
+    }
+
+    function scold() external virtual override onlyForRiddle returns (int8) {
+        if (rating > type(int8).min) {
+            emit IUser.UserRatingChanged(
+                address(this), this.owner(), this.nickString(), --rating, address(_msgSender())
+            );
+        }
+        return rating;
+    }
+
     /**
      * @dev Implementation of ERC165
      * @param interfaceId Interface identifier
@@ -163,13 +200,10 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
     {
         return ERC2771ContextUpgradeable._contextSuffixLength();
     }
-    /**
-     * @dev Necessary override
-     */
-    /**
-     * @dev Necessary override
-     */
 
+    /**
+     * @dev Necessary override
+     */
     function _msgSender()
         internal
         view
@@ -180,6 +214,9 @@ contract User is IUser, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeable {
         return ERC2771ContextUpgradeable._msgSender();
     }
 
+    /**
+     * @dev Necessary override
+     */
     function _msgData()
         internal
         view

@@ -114,7 +114,7 @@ contract Register is
         userByNick[nickShortString] = user;
         userByAccount[msgSender] = user;
         users.push(user);
-        emit IUser.UserRegistered(msgSender, nick);
+        emit IUser.UserRegistered(address(user), msgSender, nick);
         return user;
     }
 
@@ -134,7 +134,7 @@ contract Register is
         }
         users.pop();
         user.goodbye();
-        emit IUser.UserRemoved(user.owner(), user.nickString(), tx.origin);
+        emit IUser.UserRemoved(address(user), user.owner(), user.nickString(), tx.origin);
     }
 
     /**

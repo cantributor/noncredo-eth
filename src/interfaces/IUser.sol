@@ -22,19 +22,39 @@ interface IUser {
     error CommitmentError(address commiterAccount, address userAddress, string statement, uint256 amount);
 
     /**
+     * @dev Trying to call some function that should be called only by Riddle contract
+     * @param illegalCaller Illegal caller
+     */
+    error OnlyRiddleMayCallThis(address illegalCaller);
+
+    /**
      * @dev User successfully registered
+     * @param user User contract address
      * @param owner User owner address
      * @param nick User nick
      */
-    event UserRegistered(address indexed owner, string indexed nick);
+    event UserRegistered(address indexed user, address indexed owner, string indexed nick);
 
     /**
      * @dev User successfully removed
+     * @param user User contract address
      * @param owner User owner address
      * @param nick User nick
      * @param remover Who removed
      */
-    event UserRemoved(address indexed owner, string indexed nick, address indexed remover);
+    event UserRemoved(address indexed user, address indexed owner, string indexed nick, address remover);
+
+    /**
+     * @dev User rating changed
+     * @param user User contract address
+     * @param owner User owner address
+     * @param nick User nick
+     * @param rating New rating value
+     * @param riddle Riddle contract address
+     */
+    event UserRatingChanged(
+        address indexed user, address indexed owner, string indexed nick, int8 rating, address riddle
+    );
 
     /**
      * @dev Initializable implementation
@@ -79,6 +99,8 @@ interface IUser {
 
     function index() external view returns (uint32);
 
+    function rating() external view returns (int8);
+
     /**
      * @dev Set index of user (should be implemented with onlyForRegister modifier)
      * @param _index New index value
@@ -102,7 +124,7 @@ interface IUser {
     function remove(IRiddle riddle) external;
 
     /**
-     * @dev Conversion of registerAddress to Register contract
+     * @dev Access to Register contract (for riddles)
      * @return Register contract
      */
     function register() external view returns (IRegister);
@@ -113,4 +135,16 @@ interface IUser {
      * @param encryptedSolution Encrypted solution
      */
     function commit(string calldata statement, uint256 encryptedSolution) external payable returns (IRiddle);
+
+    /**
+     * @dev Increase user rating
+     * @return Current rating
+     */
+    function praise() external returns (int8);
+
+    /**
+     * @dev Decrease user rating
+     * @return Current rating
+     */
+    function scold() external returns (int8);
 }

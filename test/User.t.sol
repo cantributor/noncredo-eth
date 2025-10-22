@@ -100,8 +100,8 @@ contract UserTest is Test {
         emit IRiddle.RewardPayed(address(riddle), OWNER, 1000);
         vm.expectEmit(true, true, true, true);
         emit IRiddle.RiddleRemoved(address(user), address(riddle), OWNER, 1);
-        vm.expectEmit(true, true, true, false);
-        emit IUser.UserRemoved(OWNER, "owner", OWNER);
+        vm.expectEmit(true, true, true, true);
+        emit IUser.UserRemoved(address(user), OWNER, "owner", OWNER);
 
         vm.prank(OWNER, OWNER);
         user.remove();
@@ -121,6 +121,16 @@ contract UserTest is Test {
         vm.prank(OWNER);
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, OWNER));
         user.commit(TYPICAL_RIDDLE_STATEMENT, 777);
+    }
+
+    function test_RevertWhen_NotRiddleCalls() public {
+        IUser user = registerProxy.registerMeAs("user");
+
+        vm.expectRevert(abi.encodeWithSelector(IUser.OnlyRiddleMayCallThis.selector, USER));
+        user.praise();
+
+        vm.expectRevert(abi.encodeWithSelector(IUser.OnlyRiddleMayCallThis.selector, USER));
+        user.scold();
     }
 
     function test_RevertWhen_NotRegisterCalls() public {
@@ -242,6 +252,34 @@ contract UserTest is Test {
         assertEq(type(uint256).max, user1.indexOf(riddle3));
 
         assertEq(0, user2.indexOf(riddle3));
+    }
+
+    function test_rating() public {
+        IUser user = registerProxy.registerMeAs("user");
+        IRiddle riddle = user.commit(TYPICAL_RIDDLE_STATEMENT, 101);
+        assertEq(0, user.rating());
+
+        vm.prank(OWNER);
+        registerProxy.registerMeAs("owner");
+
+        vm.expectEmit(true, true, true, false);
+        emit IUser.UserRatingChanged(address(user), USER, "user", 1, address(riddle));
+
+        vm.prank(OWNER);
+        riddle.guess(101);
+
+        assertEq(1, user.rating());
+
+        vm.prank(OWNER);
+        riddle.dislike();
+
+        vm.expectEmit(true, true, true, false);
+        emit IUser.UserRatingChanged(address(user), USER, "user", -1, address(riddle));
+
+        vm.prank(USER);
+        riddle.dislike();
+
+        assertEq(-1, user.rating());
     }
 
     function test_MetaTransaction() public {

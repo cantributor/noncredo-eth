@@ -22,7 +22,9 @@ import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 contract FakeUser is IUser, Ownable, ERC165 {
     ShortString public nick;
     uint32 public index;
+    int8 public rating;
     address payable public registerAddress;
+
     IRiddle[] public riddles;
 
     constructor(address initialOwner, ShortString _nick, uint32 _index, address payable _registerAddress)
@@ -77,6 +79,14 @@ contract FakeUser is IUser, Ownable, ERC165 {
 
     function register() external view virtual override returns (IRegister) {
         return IRegister(registerAddress);
+    }
+
+    function praise() external virtual override returns (int8) {
+        return 0;
+    }
+
+    function scold() external virtual override returns (int8) {
+        return 0;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
