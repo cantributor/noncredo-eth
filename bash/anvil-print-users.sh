@@ -1,7 +1,6 @@
 source ../.env
 echo -------------------------------------------------------------------------------------------------------------------
 echo totalUsers $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "totalUsers()(uint32)" --rpc-url $ANVIL_RPC_URL)
-echo allNicks $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "allNicks()(string[])" --rpc-url $ANVIL_RPC_URL)
 echo -------------------------------------------------------------------------------------------------------------------
 echo guess duration \(blocks\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "guessDurationBlocks()(uint32)" --rpc-url $ANVIL_RPC_URL)
 echo reveal duration \(blocks\) $(cast call $ANVIL_REGISTER_PROXY_ADDRESS "revealDurationBlocks()(uint32)" --rpc-url $ANVIL_RPC_URL)

@@ -21,7 +21,6 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {EfficientHashLib} from "solady/utils/EfficientHashLib.sol";
 
 /**
@@ -96,14 +95,6 @@ contract Register is
         return user;
     }
 
-    function me() external view virtual returns (IUser) {
-        IUser foundUser = userByAccount[_msgSender()];
-        if (address(foundUser) == address(0)) {
-            revert IRegister.AccountNotRegistered(_msgSender());
-        }
-        return foundUser;
-    }
-
     function registerMeAs(string calldata nick) external virtual whenNotPaused returns (IUser user) {
         ShortString nickShortString = Utils.validateNick(nick);
         address foundByNick = address(userByNick[nickShortString]);
@@ -132,17 +123,10 @@ contract Register is
      * @param user User to remove
      */
     function removeUser(IUser user) internal virtual {
-        address foundByNick = address(userByNick[user.nick()]);
-        if (foundByNick == address(0)) {
-            revert IRegister.NickNotRegistered(user.nickString());
-        }
-        address userOwner = user.owner();
-        address foundByAccount = address(userByAccount[userOwner]);
-        if (foundByAccount == address(0)) {
-            revert IRegister.AccountNotRegistered(userOwner);
-        }
+        this.userOf(user.nickString());
+        this.userOf(user.owner());
         delete userByNick[user.nick()];
-        delete userByAccount[userOwner];
+        delete userByAccount[user.owner()];
         uint32 userIndex = user.index();
         if (userIndex < users.length - 1) {
             users[userIndex] = users[users.length - 1];
@@ -150,7 +134,7 @@ contract Register is
         }
         users.pop();
         user.goodbye();
-        emit IUser.UserRemoved(userOwner, user.nickString(), tx.origin);
+        emit IUser.UserRemoved(user.owner(), user.nickString(), tx.origin);
     }
 
     /**
@@ -181,9 +165,9 @@ contract Register is
      * @param contractAddress Contract to remove
      */
     function removalImplementation(address contractAddress) internal virtual {
-        if (addressIsRegisteredUser(contractAddress)) {
+        if (Utils.addressIsRegisteredUser(contractAddress, this)) {
             removeUser(IUser(contractAddress));
-        } else if (addressIsRegisteredRiddle(payable(contractAddress))) {
+        } else if (Utils.addressIsRegisteredRiddle(payable(contractAddress), this)) {
             removeRiddle(IRiddle(payable(contractAddress)));
         } else {
             revert IRegister.IllegalActionCall("remove", contractAddress, _msgSender(), tx.origin);
@@ -200,15 +184,6 @@ contract Register is
 
     function totalUsers() external view virtual returns (uint32) {
         return uint32(users.length);
-    }
-
-    function allNicks() external view virtual returns (string[] memory result) {
-        uint256 usersLength = users.length;
-        result = new string[](usersLength);
-        for (uint256 i = 0; i < usersLength; ++i) {
-            result[i] = users[i].nickString();
-        }
-        return result;
     }
 
     function nextRiddleId() external virtual whenNotPaused returns (uint32) {
@@ -229,7 +204,7 @@ contract Register is
             );
         }
         address userAddress = _msgSender();
-        if (!addressIsRegisteredUser(userAddress)) {
+        if (!Utils.addressIsRegisteredUser(userAddress, this)) {
             revert IRegister.IllegalActionCall("registerRiddle", address(riddle), userAddress, tx.origin);
         }
         riddles.push(riddle);
@@ -267,6 +242,10 @@ contract Register is
 
     function paymentsArray() external view virtual returns (Payment[] memory) {
         return payments;
+    }
+
+    function usersArray() external view virtual returns (IUser[] memory) {
+        return users;
     }
 
     /**
@@ -338,32 +317,6 @@ contract Register is
         UUPSUpgradeable.upgradeToAndCall(implementation, data);
     }
 
-    /**
-     * @dev Check if address is registered User
-     */
-    function addressIsRegisteredUser(address userAddress) internal view virtual returns (bool) {
-        bool isUser = ERC165Checker.supportsInterface(userAddress, type(IUser).interfaceId);
-        if (isUser) {
-            IUser user = IUser(userAddress);
-            return userByAccount[user.owner()] == user;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * @dev Check if address is registered Riddle
-     */
-    function addressIsRegisteredRiddle(address payable riddleAddress) internal view virtual returns (bool) {
-        bool isRiddle = ERC165Checker.supportsInterface(riddleAddress, type(IRiddle).interfaceId);
-        if (isRiddle) {
-            IRiddle riddle = IRiddle(riddleAddress);
-            return riddle.index() < riddles.length && riddles[riddle.index()] == riddle;
-        } else {
-            return false;
-        }
-    }
-
     function withdraw(address payable beneficiary) external virtual whenNotPaused restricted {
         uint256 amount = address(this).balance;
         if (amount == 0) {
@@ -387,7 +340,7 @@ contract Register is
     receive() external payable {
         address payable msgSender = payable(_msgSender());
         Payment memory payment;
-        if (addressIsRegisteredRiddle(msgSender)) {
+        if (Utils.addressIsRegisteredRiddle(msgSender, this)) {
             IRiddle riddle = IRiddle(msgSender);
             payment = Payment({payer: msgSender, riddleId: riddle.id(), amount: msg.value});
         } else {

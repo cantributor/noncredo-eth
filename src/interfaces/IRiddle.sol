@@ -223,6 +223,7 @@ interface IRiddle {
      * @param _index New index value
      */
     function setIndex(uint32 _index) external;
+
     function statement() external view returns (string memory);
 
     /**

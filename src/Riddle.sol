@@ -35,9 +35,9 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
 
     int16 public rating;
 
-    address[] internal dislikers;
+    address[] public dislikers;
 
-    Guess[] internal guesses;
+    Guess[] public guesses;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {

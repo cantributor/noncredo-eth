@@ -129,12 +129,6 @@ interface IRegister {
     function userOf(string memory nick) external returns (IUser);
 
     /**
-     * @dev Get user of current account
-     * @return user of current account
-     */
-    function me() external view returns (IUser);
-
-    /**
      * @dev Register user for sender account with specific nickname
      * @param nick Nick for registration
      * @return user Registered user
@@ -156,12 +150,6 @@ interface IRegister {
      * @return total number of users
      */
     function totalUsers() external view returns (uint32);
-
-    /**
-     * @dev Get all nicks
-     * @return result All nicks array
-     */
-    function allNicks() external view returns (string[] memory result);
 
     /**
      * @dev Riddle id generator
@@ -203,9 +191,15 @@ interface IRegister {
 
     /**
      * @dev Get payments array
-     * @return payments array
+     * @return Payments array
      */
     function paymentsArray() external view returns (Payment[] memory);
+
+    /**
+     * @dev Get users array
+     * @return Users array
+     */
+    function usersArray() external view returns (IUser[] memory);
 
     /**
      * @dev Pause execution
@@ -223,6 +217,9 @@ interface IRegister {
      */
     function withdraw(address payable beneficiary) external;
 
+    /**
+     * @dev UUPSUpgradeable implementation
+     */
     function upgradeToAndCall(address implementation, bytes memory data) external payable;
 
     /**

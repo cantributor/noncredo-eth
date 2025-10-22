@@ -1,7 +1,6 @@
 source ../.env
 echo -------------------------------------------------------------------------------------------------------------------
 echo totalUsers $(cast call $SEPOLIA_REGISTER_PROXY_ADDRESS "totalUsers()(uint32)" --rpc-url $SEPOLIA_RPC_URL)
-echo allNicks $(cast call $SEPOLIA_REGISTER_PROXY_ADDRESS "allNicks()(string[])" --rpc-url $SEPOLIA_RPC_URL)
 echo -------------------------------------------------------------------------------------------------------------------
 echo guess duration \(blocks\) $(cast call $SEPOLIA_REGISTER_PROXY_ADDRESS "guessDurationBlocks()(uint32)" --rpc-url $SEPOLIA_RPC_URL)
 echo reveal duration \(blocks\) $(cast call $SEPOLIA_REGISTER_PROXY_ADDRESS "revealDurationBlocks()(uint32)" --rpc-url $SEPOLIA_RPC_URL)

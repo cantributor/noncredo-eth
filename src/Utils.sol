@@ -2,11 +2,13 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.28;
 
+import {IRegister} from "./interfaces/IRegister.sol";
 import {IRiddle} from "./interfaces/IRiddle.sol";
+import {IUser} from "./interfaces/IUser.sol";
 
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
 import {ShortStrings} from "@openzeppelin/contracts/utils/ShortStrings.sol";
-import {IRiddle} from "./interfaces/IRiddle.sol";
 
 library Utils {
     uint8 public constant MIN_NICK_LENGTH = 3;
@@ -80,7 +82,7 @@ library Utils {
      * @param nick User nick
      * @return Nick in ShortString form
      */
-    function validateNick(string calldata nick) internal pure returns (ShortString) {
+    function validateNick(string calldata nick) public pure returns (ShortString) {
         bytes memory nickBytes = bytes(nick);
 
         if (nickBytes.length > MAX_NICK_LENGTH) {
@@ -98,7 +100,7 @@ library Utils {
      * @dev Validate Riddle statement
      * @param statement Riddle contract
      */
-    function validateRiddle(string calldata statement) internal pure {
+    function validateRiddle(string calldata statement) public pure {
         bytes memory statementBytes = bytes(statement);
 
         if (statementBytes.length > MAX_RIDDLE_LENGTH) {
@@ -114,7 +116,7 @@ library Utils {
      * @param _guessDurationBlocks Guess duration in blocks
      * @param _revealDurationBlocks Reveal duration in blocks
      */
-    function validateDurations(uint32 _guessDurationBlocks, uint32 _revealDurationBlocks) internal pure {
+    function validateDurations(uint32 _guessDurationBlocks, uint32 _revealDurationBlocks) public pure {
         if (
             _guessDurationBlocks < MIN_DURATION || _guessDurationBlocks > MAX_DURATION
                 || _revealDurationBlocks < MIN_DURATION || _revealDurationBlocks > MAX_DURATION
@@ -127,7 +129,7 @@ library Utils {
      * @dev Validate percent value
      * @param _percent Percent value
      */
-    function validatePercent(uint8 _percent) internal pure {
+    function validatePercent(uint8 _percent) public pure {
         if (_percent < MIN_PERCENT || _percent > MAX_PERCENT) {
             revert InvalidPercent(_percent);
         }
@@ -140,8 +142,8 @@ library Utils {
      * @param userSecretKey User secret key string to hide Credo/NonCredo
      * @return encryptedCredo Encrypted Credo/NonCredo
      */
-    function encryptCredo(string calldata riddleStatement, bool credo, string calldata userSecretKey)
-        external
+    function encryptCredo(string memory riddleStatement, bool credo, string memory userSecretKey)
+        public
         pure
         returns (uint256 encryptedCredo)
     {
@@ -157,7 +159,7 @@ library Utils {
      * @return decryptedCredo Decrypted Credo/NonCredo
      */
     function decryptCredo(IRiddle riddle, uint256 encryptedCredo, string calldata userSecretKey)
-        external
+        public
         view
         returns (bool decryptedCredo)
     {
@@ -168,6 +170,47 @@ library Utils {
             decryptedCredo = true;
         } else {
             revert IncorrectUserSecretKey(riddle.id(), riddle.statement(), encryptedCredo, userSecretKey);
+        }
+    }
+
+    /**
+     * @dev Get all nicks
+     * @param register Register contract interface
+     * @return result All nicks array
+     */
+    function allNicks(IRegister register) public view returns (string[] memory result) {
+        IUser[] memory usersArray = register.usersArray();
+        uint256 usersLength = usersArray.length;
+        result = new string[](usersLength);
+        for (uint256 i = 0; i < usersLength; ++i) {
+            result[i] = usersArray[i].nickString();
+        }
+        return result;
+    }
+
+    /**
+     * @dev Check if address is registered User
+     */
+    function addressIsRegisteredUser(address userAddress, IRegister register) public returns (bool) {
+        bool isUser = ERC165Checker.supportsInterface(userAddress, type(IUser).interfaceId);
+        if (isUser) {
+            IUser user = IUser(userAddress);
+            return register.userOf(user.owner()) == user;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Check if address is registered Riddle
+     */
+    function addressIsRegisteredRiddle(address payable riddleAddress, IRegister register) public view returns (bool) {
+        bool isRiddle = ERC165Checker.supportsInterface(riddleAddress, type(IRiddle).interfaceId);
+        if (isRiddle) {
+            IRiddle riddle = IRiddle(riddleAddress);
+            return riddle.index() < register.totalRiddles() && register.riddles(riddle.index()) == riddle;
+        } else {
+            return false;
         }
     }
 }

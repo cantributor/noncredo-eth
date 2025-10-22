@@ -157,20 +157,12 @@ contract RegisterTest is Test {
 
     function test_RevertWhen_NotFound() public {
         vm.expectRevert(abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, USER));
-        (bool s1,) = address(registerProxy).call(abi.encodeWithSignature("me()"));
-        assertTrue(s1);
-
-        vm.startPrank(address(USER_ADMIN));
-
-        vm.expectRevert(abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, USER));
         (bool s2,) = address(registerProxy).call(abi.encodeWithSignature("userOf(address)", USER));
         assertTrue(s2);
 
         vm.expectRevert(abi.encodeWithSelector(IRegister.NickNotRegistered.selector, "user"));
         (bool s3,) = address(registerProxy).call(abi.encodeWithSignature("userOf(string)", "user"));
         assertTrue(s3);
-
-        vm.stopPrank();
     }
 
     function test_userOfAddress() public {
@@ -194,17 +186,6 @@ contract RegisterTest is Test {
         assertEq(1, utilUserOf("owner").index());
     }
 
-    function test_me() public {
-        utilRegisterAccount(USER, "user");
-        utilRegisterAccount(OWNER, "owner");
-
-        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
-        assertEq("user", utilResultAsUser(success, result).nickString());
-
-        IUser user = registerProxy.me();
-        assertEq("user", user.nickString());
-    }
-
     function test_totalUsers() public {
         assertEq(utilGetTotalUsers(), 0);
 
@@ -222,9 +203,7 @@ contract RegisterTest is Test {
         expectedNicks[0] = "user";
         expectedNicks[1] = "owner";
 
-        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("allNicks()"));
-        assertTrue(success);
-        string[] memory allNicksResult = abi.decode(result, (string[]));
+        string[] memory allNicksResult = Utils.allNicks(registerProxy);
         assertEq(expectedNicks, allNicksResult);
     }
 
@@ -253,10 +232,7 @@ contract RegisterTest is Test {
     }
 
     function test_RevertWhen_TryingToReinitializeUser() public {
-        utilRegisterAccount(USER, "user");
-
-        (bool success, bytes memory result) = address(registerProxy).call(abi.encodeWithSignature("me()"));
-        IUser user = utilResultAsUser(success, result);
+        IUser user = utilRegisterAccount(USER, "user");
 
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
         user.initialize(USER, ShortStrings.toShortString("hacker"), 666, payable(registerImpl));
@@ -309,7 +285,7 @@ contract RegisterTest is Test {
         expectedNicks[0] = "user1";
         expectedNicks[1] = "user3";
 
-        string[] memory allNicksResult = registerProxy.allNicks();
+        string[] memory allNicksResult = Utils.allNicks(registerProxy);
         assertEq(expectedNicks, allNicksResult);
 
         assertEq(0, utilUserOf("user1").index());
