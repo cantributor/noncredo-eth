@@ -87,6 +87,8 @@ contract RiddleTest is Test {
         registerProxy.setGuessAndRevealDuration(Utils.MIN_DURATION, Utils.MIN_DURATION);
         registerProxy.setRegisterReward(10);
         vm.stopPrank();
+        vm.prank(USER_ADMIN);
+        registerProxy.setBanThresholds(2, 2);
 
         riddleV2Impl = new RiddleV2(address(erc2771Forwarder));
 
@@ -130,6 +132,36 @@ contract RiddleTest is Test {
         riddle.remove();
     }
 
+    function test_RevertWhen_RiddleIsFinished() public {
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+
+        vm.prank(RIDDLING);
+        riddle.remove();
+
+        vm.expectRevert(abi.encodeWithSelector(IRiddle.RiddleIsFinished.selector, 1, address(riddle), RIDDLING));
+        vm.prank(RIDDLING);
+        riddle.remove();
+
+        bytes memory encodedRiddleIsFinished =
+            abi.encodeWithSelector(IRiddle.RiddleIsFinished.selector, 1, address(riddle), GUESSING_1);
+
+        vm.startPrank(GUESSING_1);
+
+        vm.expectRevert(encodedRiddleIsFinished);
+        riddle.guess(101);
+
+        vm.expectRevert(encodedRiddleIsFinished);
+        riddle.reveal("no matter");
+
+        vm.expectRevert(encodedRiddleIsFinished);
+        riddle.finalize();
+
+        vm.expectRevert(encodedRiddleIsFinished);
+        riddle.dislike();
+
+        vm.stopPrank();
+    }
+
     function test_setIndex() public {
         IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
@@ -141,14 +173,24 @@ contract RiddleTest is Test {
         assertEq(777, riddle.index());
     }
 
-    function test_guess_RevertWhen_AccountNotRegistered() public {
+    function test_RevertWhen_AccountNotRegistered() public {
         IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
 
-        vm.prank(GUESSING_NOT_REGISTERED);
-        vm.expectRevert(
-            abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, address(GUESSING_NOT_REGISTERED))
-        );
+        bytes memory encodedAccountNotRegistered =
+            abi.encodeWithSelector(IRegister.AccountNotRegistered.selector, address(GUESSING_NOT_REGISTERED));
+
+        vm.startPrank(GUESSING_NOT_REGISTERED);
+
+        vm.expectRevert(encodedAccountNotRegistered);
         riddle.guess(101);
+
+        vm.expectRevert(encodedAccountNotRegistered);
+        riddle.finalize();
+
+        vm.expectRevert(encodedAccountNotRegistered);
+        riddle.dislike();
+
+        vm.stopPrank();
     }
 
     function test_guess_RevertWhen_OwnerTriesToGuess() public {
@@ -172,6 +214,8 @@ contract RiddleTest is Test {
 
     function test_guess_RevertWhen_RiddleAlreadyInRevelationState() public {
         IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+        vm.prank(GUESSING_1);
+        riddle.guess(101);
 
         vm.roll(riddle.guessDeadline() + 1);
 
@@ -179,9 +223,9 @@ contract RiddleTest is Test {
         riddle.reveal(USER_SECRET_KEY);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IRiddle.RiddleAlreadyInRevelationState.selector, 1, address(riddle), GUESSING_1)
+            abi.encodeWithSelector(IRiddle.RiddleAlreadyInRevelationState.selector, 1, address(riddle), GUESSING_2)
         );
-        vm.prank(GUESSING_1);
+        vm.prank(GUESSING_2);
         riddle.guess(101);
     }
 
@@ -217,7 +261,7 @@ contract RiddleTest is Test {
         assertEq(1000, GUESSING_1.balance);
         uint256 encryptedCredo = Utils.encryptCredo(TYPICAL_RIDDLE_STATEMENT, true, USER_SECRET_KEY);
         vm.expectEmit(true, true, false, true);
-        emit IRiddle.GuessRegistered(address(riddle), GUESSING_1, 1, encryptedCredo, 1000);
+        emit IRiddle.GuessRegistered(address(riddle), GUESSING_1, 1, encryptedCredo, 1000, 1);
         vm.prank(GUESSING_1);
         Guess memory guess = riddle.guess{value: 1000}(encryptedCredo);
         assertEq(0, GUESSING_1.balance);
@@ -416,13 +460,14 @@ contract RiddleTest is Test {
 
         vm.roll(riddle.guessDeadline() + 1);
 
-        vm.prank(GUESSING_1);
+        vm.startPrank(GUESSING_1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IRiddle.RevelationPeriodNotFinished.selector, 1, block.number, riddle.revealDeadline()
             )
         );
         riddle.finalize();
+        vm.stopPrank();
     }
 
     function test_finalize_Successful_NoGuessesButSponsorPayment() public {
@@ -536,6 +581,50 @@ contract RiddleTest is Test {
 
         // below commit is possible because Register.riddleByStatement cleaned from riddle1.statement
         utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 0, USER_SECRET_KEY);
+    }
+
+    function test_dislike_RevertWhen_DuplicateDislike() public {
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
+
+        vm.prank(GUESSING_1);
+        riddle.dislike();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IRiddle.DuplicateDislike.selector, address(riddle), 1, address(GUESSING_1))
+        );
+
+        vm.prank(GUESSING_1);
+        riddle.dislike();
+    }
+
+    function test_dislike_Successful() public {
+        IRiddle riddle = utilCreateRiddle(TYPICAL_RIDDLE_STATEMENT, true, 1000, USER_SECRET_KEY);
+        assertEq(0, riddle.rating());
+        assertEq(1, registerProxy.totalRiddles());
+        assertEq(0, RIDDLING.balance);
+
+        vm.prank(GUESSING_1);
+        riddle.guess(101);
+        assertEq(1, riddle.rating());
+
+        vm.prank(GUESSING_1);
+        vm.expectEmit(true, true, false, true);
+        emit IRiddle.RiddleDislike(address(riddle), GUESSING_1, 1, 0);
+        riddle.dislike();
+        assertEq(0, riddle.rating());
+
+        vm.prank(GUESSING_2);
+        riddle.dislike();
+        assertEq(-1, riddle.rating());
+        assertFalse(riddle.finished());
+        assertEq(1, registerProxy.totalRiddles());
+
+        vm.prank(GUESSING_3);
+        riddle.dislike();
+        assertEq(-2, riddle.rating());
+        assertTrue(riddle.finished());
+        assertEq(0, registerProxy.totalRiddles());
+        assertEq(1000, RIDDLING.balance);
     }
 
     function test_MetaTransaction() public {

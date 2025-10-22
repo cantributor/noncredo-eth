@@ -106,6 +106,9 @@ interface IRegister {
 
     function registerRewardPercent() external view returns (uint8);
 
+    function riddleBanThreshold() external view returns (uint8);
+    function userBanThreshold() external view returns (uint8);
+
     function riddles(uint256) external view returns (IRiddle);
     function users(uint256) external view returns (IUser);
 
@@ -190,6 +193,13 @@ interface IRegister {
      * @param _registerReward New register reward percent value
      */
     function setRegisterReward(uint8 _registerReward) external;
+
+    /**
+     * @dev Set ban thresholds for riddles & users
+     * @param _riddleBanThreshold Ban threshold for riddles
+     * @param _userBanThreshold Ban threshold for users
+     */
+    function setBanThresholds(uint8 _riddleBanThreshold, uint8 _userBanThreshold) external;
 
     /**
      * @dev Get payments array

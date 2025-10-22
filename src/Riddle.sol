@@ -30,8 +30,12 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
     bool public revelation;
     bool public finished;
 
-    uint256 public guessDeadline;
-    uint256 public revealDeadline;
+    uint40 public guessDeadline;
+    uint40 public revealDeadline;
+
+    int16 public rating;
+
+    address[] internal dislikers;
 
     Guess[] internal guesses;
 
@@ -59,10 +63,11 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         guesses.push(ownerGuess);
 
         IRegister reg = user.register();
-        guessDeadline = block.number + reg.guessDurationBlocks();
+        guessDeadline = uint40(block.number) + reg.guessDurationBlocks();
         revealDeadline = guessDeadline + reg.revealDurationBlocks();
         revelation = false;
         finished = false;
+        rating = 0;
     }
 
     /**
@@ -79,11 +84,25 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         }
     }
 
+    /**
+     * @dev Throws if Riddle in "finished" state
+     */
+    modifier notFinished() {
+        _notFinished();
+        _;
+    }
+
+    function _notFinished() internal view {
+        if (finished) {
+            revert RiddleIsFinished(id, address(this), _msgSender());
+        }
+    }
+
     function setIndex(uint32 _index) external virtual override onlyForRegister {
         index = _index;
     }
 
-    function guess(uint256 encryptedCredo) external payable override returns (Guess memory _guess) {
+    function guess(uint256 encryptedCredo) external payable override notFinished returns (Guess memory _guess) {
         address msgSender = _msgSender();
         if (revelation) {
             revert RiddleAlreadyInRevelationState(id, address(this), msgSender);
@@ -103,7 +122,10 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         _guess =
             Guess({account: msgSender, encryptedCredo: encryptedCredo, bet: msg.value, revealed: false, credo: false});
         guesses.push(_guess);
-        emit GuessRegistered(address(this), msgSender, id, encryptedCredo, msg.value);
+        if (rating < type(int16).max) {
+            rating++;
+        }
+        emit GuessRegistered(address(this), msgSender, id, encryptedCredo, msg.value, rating);
         return _guess;
     }
 
@@ -127,7 +149,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
         return guesses[_index];
     }
 
-    function reveal(string calldata userSecretKey) external override returns (bool credo) {
+    function reveal(string calldata userSecretKey) external override notFinished returns (bool credo) {
         address msgSender = _msgSender();
         IRegister register = user.register();
         if (register.paused()) {
@@ -258,22 +280,47 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
             payReward(payable(user.register()), remainder, "");
         }
         delete guesses;
+        delete dislikers;
         finished = true;
     }
 
-    function remove() external virtual override onlyOwner {
+    function remove() external virtual override onlyOwner notFinished {
         user.register().removeMe();
     }
 
-    function finalize() external virtual override {
+    function finalize() external virtual override notFinished {
         IRegister register = user.register();
         if (register.paused()) {
             revert PausableUpgradeable.EnforcedPause();
         }
+        register.userOf(_msgSender());
         if (block.number <= revealDeadline) {
             revert RevelationPeriodNotFinished(id, block.number, revealDeadline);
         }
         register.removeMe();
+    }
+
+    function dislike() external virtual override notFinished {
+        address msgSender = _msgSender();
+        IRegister register = user.register();
+        register.userOf(msgSender);
+        bool found = false;
+        for (uint256 i = 0; i < dislikers.length; i++) {
+            if (dislikers[i] == msgSender) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            revert DuplicateDislike(address(this), id, msgSender);
+        }
+        dislikers.push(msgSender);
+        rating--;
+        emit RiddleDislike(address(this), msgSender, id, rating);
+        int16 riddleBanThreshold = -int16(uint16(register.riddleBanThreshold()));
+        if (rating <= riddleBanThreshold) {
+            register.removeMe();
+        }
     }
 
     /**
@@ -294,10 +341,7 @@ contract Riddle is IRiddle, OwnableUpgradeable, ERC165, ERC2771ContextUpgradeabl
     /**
      * @dev To receive sponsor payments (no guess)
      */
-    receive() external payable override {
-        if (finished) {
-            revert RiddleAlreadyFinished(id, address(this), _msgSender());
-        }
+    receive() external payable override notFinished {
         if (_msgSender() == address(user)) {
             guesses[0].bet = msg.value;
         } else {

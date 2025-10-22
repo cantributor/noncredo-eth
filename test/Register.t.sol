@@ -101,6 +101,9 @@ contract RegisterTest is Test {
 
         vm.expectRevert(encodedUnauthorized);
         registerProxy.withdraw(USER);
+
+        vm.expectRevert(encodedUnauthorized);
+        registerProxy.setBanThresholds(1, 1);
     }
 
     function test_RevertWhen_OnPause() public {

@@ -57,7 +57,7 @@ interface IRiddle {
      * @param riddleAddress Riddle contract address
      * @param msgSender Message sender address
      */
-    error RiddleAlreadyFinished(uint32 riddleId, address riddleAddress, address msgSender);
+    error RiddleIsFinished(uint32 riddleId, address riddleAddress, address msgSender);
 
     /**
      * @dev Riddle already revealed by this caller
@@ -93,6 +93,14 @@ interface IRiddle {
     error PaymentError(address riddleAddress, uint32 riddleId, address receiverAddress, uint256 amount);
 
     /**
+     * @dev Payment error
+     * @param riddleAddress Riddle contract address
+     * @param riddleId Riddle id
+     * @param dislikerAddress Address of duplicate disliker
+     */
+    error DuplicateDislike(address riddleAddress, uint32 riddleId, address dislikerAddress);
+
+    /**
      * @dev Riddle successfully registered
      * @param userAddress User contract address
      * @param riddleAddress Riddle contract address
@@ -121,9 +129,15 @@ interface IRiddle {
      * @param id Riddle id
      * @param encryptedCredo Encrypted Credo/NonCredo
      * @param bet Placed bet value
+     * @param rating New Riddle rating value
      */
     event GuessRegistered(
-        address indexed riddleAddress, address indexed guessSender, uint32 id, uint256 encryptedCredo, uint256 bet
+        address indexed riddleAddress,
+        address indexed guessSender,
+        uint32 id,
+        uint256 encryptedCredo,
+        uint256 bet,
+        int16 rating
     );
 
     /**
@@ -156,6 +170,15 @@ interface IRiddle {
     );
 
     /**
+     * @dev Sponsor payment received
+     * @param riddleAddress Riddle contract address
+     * @param dislikerAddress Disliker account address
+     * @param id Riddle id
+     * @param rating New Riddle rating value
+     */
+    event RiddleDislike(address indexed riddleAddress, address indexed dislikerAddress, uint32 id, int16 rating);
+
+    /**
      * @dev Initializable implementation
      * @param initialOwner Ownable implementation
      * @param _id Identifier
@@ -183,15 +206,17 @@ interface IRiddle {
 
     function user() external view returns (IUser);
 
-    function guessDeadline() external view returns (uint256);
+    function guessDeadline() external view returns (uint40);
 
-    function revealDeadline() external view returns (uint256);
+    function revealDeadline() external view returns (uint40);
 
     function index() external view returns (uint32);
 
     function finished() external view returns (bool);
 
     function revelation() external view returns (bool);
+
+    function rating() external view returns (int16);
 
     /**
      * @dev Set index of riddle (should be implemented with onlyForUser modifier)
@@ -249,6 +274,11 @@ interface IRiddle {
      * @dev In this process Riddle contract pays all its balance, clears guesses and stops operation
      */
     function goodbye() external;
+
+    /**
+     * @dev Dislike or downgrade the riddle
+     */
+    function dislike() external;
 
     receive() external payable;
 }
