@@ -131,9 +131,9 @@ contract DeployScript is Script {
         resumeSelector[0] = bytes4(keccak256("resume()"));
         accessMgr.setTargetFunctionRole(registerProxyAddr, resumeSelector, Roles.USER_ADMIN_ROLE);
 
-        bytes4[] memory setBanThresholdsSelector = new bytes4[](1);
-        setBanThresholdsSelector[0] = bytes4(keccak256("setBanThresholds(uint8,uint8)"));
-        accessMgr.setTargetFunctionRole(registerProxyAddr, setBanThresholdsSelector, Roles.USER_ADMIN_ROLE);
+        bytes4[] memory setRiddleBanThresholdSelector = new bytes4[](1);
+        setRiddleBanThresholdSelector[0] = bytes4(keccak256("setRiddleBanThreshold(uint8)"));
+        accessMgr.setTargetFunctionRole(registerProxyAddr, setRiddleBanThresholdSelector, Roles.USER_ADMIN_ROLE);
 
         bytes4[] memory setGuessAndRevealDurationSelector = new bytes4[](1);
         setGuessAndRevealDurationSelector[0] = bytes4(keccak256("setGuessAndRevealDuration(uint32,uint32)"));

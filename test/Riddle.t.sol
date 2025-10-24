@@ -88,7 +88,7 @@ contract RiddleTest is Test {
         registerProxy.setRegisterReward(10);
         vm.stopPrank();
         vm.prank(USER_ADMIN);
-        registerProxy.setBanThresholds(2, 2);
+        registerProxy.setRiddleBanThreshold(2);
 
         riddleV2Impl = new RiddleV2(address(erc2771Forwarder));
 

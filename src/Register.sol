@@ -55,7 +55,6 @@ contract Register is
     uint8 public registerRewardPercent;
 
     uint8 public riddleBanThreshold;
-    uint8 public userBanThreshold;
 
     IRiddle[] public riddles;
     mapping(bytes32 statementHash => IRiddle) internal riddleByStatement;
@@ -75,7 +74,6 @@ contract Register is
         revealDurationBlocks = 24 * 60 * 60 / 12; // 24 hours * 60 minutes * 60 seconds / 12 sec per block
         registerRewardPercent = 1;
         riddleBanThreshold = 3;
-        userBanThreshold = 3;
     }
 
     function userOf(address account) external virtual returns (IUser) {
@@ -229,15 +227,8 @@ contract Register is
         registerRewardPercent = _registerReward;
     }
 
-    function setBanThresholds(uint8 _riddleBanThreshold, uint8 _userBanThreshold)
-        external
-        virtual
-        override
-        whenNotPaused
-        restricted
-    {
+    function setRiddleBanThreshold(uint8 _riddleBanThreshold) external virtual override whenNotPaused restricted {
         riddleBanThreshold = _riddleBanThreshold;
-        userBanThreshold = _userBanThreshold;
     }
 
     function paymentsArray() external view virtual returns (Payment[] memory) {
