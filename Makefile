@@ -11,7 +11,6 @@ test: build
 
 anvil-deploy: test
 	forge script script/Deploy.s.sol:DeployScript --rpc-url anvil --broadcast -v \
-	  --optimize --optimizer-runs 100 \
 	  --private-key ${ANVIL_OWNER_PRIVATE_KEY}
 
 sepolia-deploy: test
