@@ -9,7 +9,7 @@ if [[ -z "$3" ]]; then
   exit 1
 fi
 
-forge script ../script/ActionRegister.s.sol:ActionRegister --rpc-url "${NETWORK_NAME}" --broadcast -v \
-  --private-key "${PRIVATE_KEY}" \
-  --sig "run(address,uint256,string)" \
-  "${REGISTER_PROXY_ADDRESS}" "$2" "$3" # register-proxy address, private key and nick params
+forge script ../script/Actions.s.sol:Actions --rpc-url "$NETWORK_NAME" --broadcast -v \
+  --private-key "$PRIVATE_KEY" \
+  --sig "register(address,uint256,string)" \
+  "$REGISTER_PROXY_ADDRESS" "$2" "$3" # register-proxy address, private key and nick params
