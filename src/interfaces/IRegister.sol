@@ -101,8 +101,8 @@ interface IRegister {
 
     function riddleBeaconHolder() external returns (AccessManagedBeaconHolder);
 
-    function guessDurationBlocks() external returns (uint32);
-    function revealDurationBlocks() external returns (uint32);
+    function guessDurationBlocks() external view returns (uint32);
+    function revealDurationBlocks() external view returns (uint32);
 
     function registerRewardPercent() external view returns (uint8);
 

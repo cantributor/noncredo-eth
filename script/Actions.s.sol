@@ -48,6 +48,14 @@ contract Actions is Script {
     }
 
     /**
+     * @dev Prints full Register report
+     */
+    function printFullReport(address payable registerProxyAddress) public {
+        registerProxy = IRegister(registerProxyAddress);
+        ScriptUtils.printFullReport(registerProxy);
+    }
+
+    /**
      * @dev Register User
      * @param registerProxyAddress Register proxy address
      * @param privateKey User private key
