@@ -1,7 +1,7 @@
 include .env
 
 build:
-	forge fmt && forge build
+	forge fmt && forge clean && forge build
 
 optimized-build:
 	forge fmt && forge clean && forge cache clean && forge build --optimize --optimizer-runs 100 --via-ir --sizes

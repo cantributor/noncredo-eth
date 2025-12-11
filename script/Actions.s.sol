@@ -17,6 +17,37 @@ contract Actions is Script {
     function setUp() public {}
 
     /**
+     * @dev Change Register settings
+     * @param guessDuration New guess duration value
+     * @param revealDuration New reveal duration value
+     */
+    function settings(
+        address payable registerProxyAddress,
+        uint256 privateKey,
+        uint32 guessDuration,
+        uint32 revealDuration
+    ) public {
+        registerProxy = IRegister(registerProxyAddress);
+
+        console.log(
+            "Register durations before change: guess",
+            registerProxy.guessDurationBlocks(),
+            "reveal",
+            registerProxy.revealDurationBlocks()
+        );
+
+        vm.broadcast(privateKey);
+        registerProxy.setGuessAndRevealDuration(guessDuration, revealDuration);
+
+        console.log(
+            "Register durations now: guess",
+            registerProxy.guessDurationBlocks(),
+            "reveal",
+            registerProxy.revealDurationBlocks()
+        );
+    }
+
+    /**
      * @dev Register User
      * @param registerProxyAddress Register proxy address
      * @param privateKey User private key
