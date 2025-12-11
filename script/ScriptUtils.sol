@@ -22,12 +22,20 @@ library ScriptUtils {
         string[] memory userNicks = Utils.allNicks(registerProxy);
         for (uint256 i = 0; i < userNicks.length; i++) {
             IUser user = registerProxy.userOf(userNicks[i]);
-            address owner = user.owner();
-            console.log(user.index(), user.nickString(), owner);
-            console.log("    balance:", address(owner).balance);
-            console.log("    contract:", address(user));
-            console.log("    rating:", user.rating());
+            describeUser(user);
         }
+    }
+
+    /**
+     * @dev Describe User
+     * @param user User contract
+     */
+    function describeUser(IUser user) public view {
+        address owner = user.owner();
+        console.log("User:", user.index(), user.nickString(), owner);
+        console.log("    balance:", address(owner).balance);
+        console.log("    contract:", address(user));
+        console.log("    rating:", user.rating());
     }
 
     /**
@@ -55,6 +63,7 @@ library ScriptUtils {
         console.log("    deadlines: ", riddle.guessDeadline(), riddle.revealDeadline());
         console.log("    status (revelation/finished): ", riddle.revelation(), riddle.finished());
         console.log("    rating: ", riddle.rating());
+        console.log("    total guesses: ", riddle.totalGuesses());
         for (uint256 i = 0; i < riddle.totalGuesses(); i++) {
             Guess memory guess = riddle.guessByIndex(i);
             console.log("    guess (index/revealed/bet)", i, guess.revealed, guess.bet);

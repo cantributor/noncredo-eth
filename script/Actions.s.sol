@@ -91,15 +91,46 @@ contract Actions is Script {
         registerProxy = IRegister(registerProxyAddress);
 
         address userOwnerAddress = vm.addr(privateKey);
-        console.log("User owner address", userOwnerAddress);
         IUser user = registerProxy.userOf(userOwnerAddress);
-        console.log("User contract address", address(user));
+        ScriptUtils.describeUser(user);
 
         uint256 encryptedSolution = Utils.encryptCredo(statement, credo, userSecretKey);
-        console.log("Encrypted solution: ", encryptedSolution);
 
         vm.broadcast(privateKey);
         IRiddle riddle = user.commit{value: bet}(statement, encryptedSolution);
+
+        ScriptUtils.describeRiddle(riddle);
+    }
+
+    /**
+     * @dev Guess a Riddle
+     * @param registerProxyAddress Register proxy address
+     * @param privateKey User private key
+     * @param riddleIndex Riddle index
+     * @param bet Placed bet value
+     * @param credo Riddle solution (Credo/NonCredo)
+     * @param userSecretKey User secret key
+     */
+    function guess(
+        address payable registerProxyAddress,
+        uint256 privateKey,
+        uint256 riddleIndex,
+        uint256 bet,
+        bool credo,
+        string memory userSecretKey
+    ) public {
+        registerProxy = IRegister(registerProxyAddress);
+
+        address userOwnerAddress = vm.addr(privateKey);
+        IUser user = registerProxy.userOf(userOwnerAddress);
+        ScriptUtils.describeUser(user);
+
+        IRiddle riddle = registerProxy.riddles(riddleIndex);
+
+        uint256 encryptedCredo = Utils.encryptCredo(riddle.statement(), credo, userSecretKey);
+
+        vm.broadcast(privateKey);
+        riddle.guess{value: bet}(encryptedCredo);
 
         ScriptUtils.describeRiddle(riddle);
     }
