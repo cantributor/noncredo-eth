@@ -333,6 +333,26 @@ contract RegisterTest is Test {
         vm.stopPrank();
     }
 
+    function test_riddleById() public {
+        vm.startPrank(OWNER);
+        IUser user = registerProxy.registerMeAs("user");
+        IRiddle riddle1 = user.commit("I am superman #2!", 101);
+        IRiddle riddle2 = user.commit("I am superman #3!", 101);
+        vm.stopPrank();
+
+        assertEq(address(riddle1), address(registerProxy.riddleById(1)));
+        assertEq(address(riddle2), address(registerProxy.riddleById(2)));
+
+        vm.prank(USER_ADMIN, USER_ADMIN);
+        registerProxy.remove(address(riddle1));
+
+        assertEq(1, registerProxy.totalRiddles());
+        assertEq(address(riddle2), address(registerProxy.riddleById(2)));
+
+        vm.expectRevert(abi.encodeWithSelector(IRiddle.RiddleNotFound.selector, 1, USER));
+        registerProxy.riddleById(1);
+    }
+
     function test_removeMe_RevertWhen_IllegalCaller() public {
         registerProxy.registerMeAs("user");
 

@@ -24,9 +24,10 @@ full-scenario: build
 	  ./action-register.sh anvil "${ANVIL_USER1_PRIVATE_KEY}" user1 && \
 	  ./action-register.sh anvil "${ANVIL_USER2_PRIVATE_KEY}" user2 && \
 	  ./action-settings.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}" 1 1 && \
-	  ./action-commit.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}" "I am president" 1000 false "secret" && \
-	  ./action-guess.sh anvil "${ANVIL_USER1_PRIVATE_KEY}" 0 3000 false "secret" && \
-	  ./action-guess.sh anvil "${ANVIL_USER2_PRIVATE_KEY}" 0 1000 true "secret" && \
+	  ./action-commit.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}" "I am president" 0 false "secret0" && \
+	  ./action-commit.sh anvil "${ANVIL_USER1_PRIVATE_KEY}" "I hate cats" 1000000000000000000000 true "secret1" && \
+	  ./action-guess.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}" 2 3000000000000000000000 false "secret0" && \
+	  ./action-guess.sh anvil "${ANVIL_USER2_PRIVATE_KEY}" 2 1000000000000000000000 true "secret2" && \
 	  ./full-report.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}"
 
 #sepolia-create-users: build

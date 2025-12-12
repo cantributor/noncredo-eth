@@ -189,6 +189,21 @@ library Utils {
     }
 
     /**
+     * @dev Get Riddle by its id
+     * @param register Register contract interface
+     * @param id Riddle id
+     * @return riddle Riddle contract interface
+     */
+    function riddleById(IRegister register, uint32 id) external view returns (IRiddle riddle) {
+        for (uint256 i = 0; i < register.totalRiddles(); i++) {
+            if (register.riddles(i).id() == id) {
+                return register.riddles(i);
+            }
+        }
+        revert IRiddle.RiddleNotFound(id, msg.sender);
+    }
+
+    /**
      * @dev Check if address is registered User
      */
     function addressIsRegisteredUser(address userAddress, IRegister register) public returns (bool) {

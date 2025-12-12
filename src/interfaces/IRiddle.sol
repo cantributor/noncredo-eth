@@ -36,6 +36,13 @@ interface IRiddle {
     error RiddleIsNotRegistered(uint32 riddleId, address riddleAddress, address msgSender);
 
     /**
+     * @dev Riddle with given id is not found
+     * @param riddleId Riddle id
+     * @param msgSender Message sender address
+     */
+    error RiddleNotFound(uint32 riddleId, address msgSender);
+
+    /**
      * @dev Riddle has no guess from this caller, so nothing to reveal
      * @param riddleId Riddle id
      * @param riddleAddress Riddle contract address

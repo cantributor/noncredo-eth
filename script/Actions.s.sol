@@ -106,7 +106,7 @@ contract Actions is Script {
      * @dev Guess a Riddle
      * @param registerProxyAddress Register proxy address
      * @param privateKey User private key
-     * @param riddleIndex Riddle index
+     * @param riddleId Riddle id
      * @param bet Placed bet value
      * @param credo Riddle solution (Credo/NonCredo)
      * @param userSecretKey User secret key
@@ -114,7 +114,7 @@ contract Actions is Script {
     function guess(
         address payable registerProxyAddress,
         uint256 privateKey,
-        uint256 riddleIndex,
+        uint32 riddleId,
         uint256 bet,
         bool credo,
         string memory userSecretKey
@@ -125,7 +125,7 @@ contract Actions is Script {
         IUser user = registerProxy.userOf(userOwnerAddress);
         ScriptUtils.describeUser(user);
 
-        IRiddle riddle = registerProxy.riddles(riddleIndex);
+        IRiddle riddle = registerProxy.riddleById(riddleId);
 
         uint256 encryptedCredo = Utils.encryptCredo(riddle.statement(), credo, userSecretKey);
 

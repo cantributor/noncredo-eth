@@ -26,6 +26,6 @@ fi
 
 forge script ../script/Actions.s.sol:Actions --rpc-url "$NETWORK_NAME" --broadcast -v \
   --private-key "$PRIVATE_KEY" \
-  --sig "guess(address,uint256,uint256,uint256,bool,string)" \
+  --sig "guess(address,uint256,uint32,uint256,bool,string)" \
   "$REGISTER_PROXY_ADDRESS" "$2" "$3" "$4" "$5" "$6"
 # above are register-proxy address, private key, riddle index, placed bet, Credo/NonCredo, user secret key
