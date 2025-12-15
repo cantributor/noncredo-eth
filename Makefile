@@ -28,6 +28,9 @@ full-scenario: build
 	  ./action-commit.sh anvil "${ANVIL_USER1_PRIVATE_KEY}" "I hate cats" 1000000000000000000000 true "secret1" && \
 	  ./action-guess.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}" 2 3000000000000000000000 false "secret0" && \
 	  ./action-guess.sh anvil "${ANVIL_USER2_PRIVATE_KEY}" 2 1000000000000000000000 true "secret2" && \
+	  ./action-reveal.sh anvil ${ANVIL_OWNER_PRIVATE_KEY} 2 "secret0" && \
+	  ./action-reveal.sh anvil ${ANVIL_USER1_PRIVATE_KEY} 2 "secret1" && \
+	  ./action-reveal.sh anvil ${ANVIL_USER2_PRIVATE_KEY} 2 "secret2" && \
 	  ./full-report.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}"
 
 #sepolia-create-users: build

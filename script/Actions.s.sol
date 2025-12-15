@@ -134,4 +134,31 @@ contract Actions is Script {
 
         ScriptUtils.describeRiddle(riddle);
     }
+
+    /**
+     * @dev Reveal a Riddle Guess
+     * @param registerProxyAddress Register proxy address
+     * @param privateKey User private key
+     * @param riddleId Riddle id
+     * @param userSecretKey User secret key
+     */
+    function reveal(
+        address payable registerProxyAddress,
+        uint256 privateKey,
+        uint32 riddleId,
+        string memory userSecretKey
+    ) public {
+        registerProxy = IRegister(registerProxyAddress);
+
+        address userOwnerAddress = vm.addr(privateKey);
+        IUser user = registerProxy.userOf(userOwnerAddress);
+        ScriptUtils.describeUser(user);
+
+        IRiddle riddle = Utils.riddleById(registerProxy, riddleId);
+
+        vm.broadcast(privateKey);
+        riddle.reveal(userSecretKey);
+
+        ScriptUtils.describeRiddle(riddle);
+    }
 }

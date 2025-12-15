@@ -9,6 +9,7 @@ import {IRiddle} from "../src/interfaces/IRiddle.sol";
 import {IUser} from "../src/interfaces/IUser.sol";
 
 import {Guess} from "../src/structs/Guess.sol";
+import {Payment} from "../src/structs/Payment.sol";
 
 import {Utils} from "../src/Utils.sol";
 
@@ -55,7 +56,7 @@ library ScriptUtils {
      * @param riddle Riddle contract
      */
     function describeRiddle(IRiddle riddle) public view {
-        console.log("Riddle (id/index): ", riddle.id(), riddle.index());
+        console.log("Riddle (id/index/contract): ", riddle.id(), riddle.index(), address(riddle));
         console.log("    statement: ", riddle.statement());
         console.log("    owner nick: ", riddle.user().nickString());
         console.log("    owner account: ", riddle.owner());
@@ -91,6 +92,17 @@ library ScriptUtils {
         console.log("Riddle ban threshold:", registerProxy.riddleBanThreshold());
         console.log("Total users:", registerProxy.totalUsers());
         console.log("Total riddles:", registerProxy.totalRiddles());
+        console.log("Register balance:", address(registerProxy).balance);
+        Payment[] memory paymentsArray = registerProxy.paymentsArray();
+        uint256 paymentsLength = paymentsArray.length;
+        for (uint256 i = 0; i < paymentsLength; ++i) {
+            console.log(
+                "Payment (riddle/amount/sender)",
+                paymentsArray[i].riddleId,
+                paymentsArray[i].amount,
+                paymentsArray[i].payer
+            );
+        }
     }
 
     /**
