@@ -193,10 +193,6 @@ contract Register is
         return uint32(riddles.length);
     }
 
-    function riddleById(uint32 id) external view returns (IRiddle) {
-        return Utils.riddleById(this, id);
-    }
-
     function registerRiddle(IRiddle riddle) external virtual whenNotPaused {
         bytes32 statementHash = EfficientHashLib.hash(bytes(riddle.statement()));
         IRiddle foundRiddle = riddleByStatement[statementHash];

@@ -125,7 +125,7 @@ contract Actions is Script {
         IUser user = registerProxy.userOf(userOwnerAddress);
         ScriptUtils.describeUser(user);
 
-        IRiddle riddle = registerProxy.riddleById(riddleId);
+        IRiddle riddle = Utils.riddleById(registerProxy, riddleId);
 
         uint256 encryptedCredo = Utils.encryptCredo(riddle.statement(), credo, userSecretKey);
 

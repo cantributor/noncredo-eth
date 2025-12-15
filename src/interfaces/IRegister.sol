@@ -163,13 +163,6 @@ interface IRegister {
     function totalRiddles() external view returns (uint32);
 
     /**
-     * @dev Get Riddle by its id
-     * @param id Riddle id
-     * @return Riddle contract interface
-     */
-    function riddleById(uint32 id) external view returns (IRiddle);
-
-    /**
      * @dev Register riddle
      * @param riddle Riddle contract to register
      */

@@ -200,7 +200,7 @@ library Utils {
                 return register.riddles(i);
             }
         }
-        revert IRiddle.RiddleNotFound(id, msg.sender);
+        revert IRiddle.RiddleNotFound(id);
     }
 
     /**

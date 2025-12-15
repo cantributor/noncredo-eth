@@ -38,9 +38,8 @@ interface IRiddle {
     /**
      * @dev Riddle with given id is not found
      * @param riddleId Riddle id
-     * @param msgSender Message sender address
      */
-    error RiddleNotFound(uint32 riddleId, address msgSender);
+    error RiddleNotFound(uint32 riddleId);
 
     /**
      * @dev Riddle has no guess from this caller, so nothing to reveal
