@@ -88,6 +88,8 @@ contract Actions is Script {
         bool credo,
         string memory userSecretKey
     ) public {
+        console.log("Current block", vm.getBlockNumber());
+
         registerProxy = IRegister(registerProxyAddress);
 
         address userOwnerAddress = vm.addr(privateKey);
@@ -119,6 +121,8 @@ contract Actions is Script {
         bool credo,
         string memory userSecretKey
     ) public {
+        console.log("Current block", vm.getBlockNumber());
+
         registerProxy = IRegister(registerProxyAddress);
 
         address userOwnerAddress = vm.addr(privateKey);
@@ -148,6 +152,8 @@ contract Actions is Script {
         uint32 riddleId,
         string memory userSecretKey
     ) public {
+        console.log("Current block", vm.getBlockNumber());
+
         registerProxy = IRegister(registerProxyAddress);
 
         address userOwnerAddress = vm.addr(privateKey);

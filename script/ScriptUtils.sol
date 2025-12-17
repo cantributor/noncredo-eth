@@ -32,9 +32,9 @@ library ScriptUtils {
      * @param user User contract
      */
     function describeUser(IUser user) public view {
-        address owner = user.owner();
+        address payable owner = payable(user.owner());
         console.log("User:", user.index(), user.nickString(), owner);
-        console.log("    balance:", address(owner).balance);
+        console.log("    balance:", owner.balance);
         console.log("    contract:", address(user));
         console.log("    rating:", user.rating());
     }
