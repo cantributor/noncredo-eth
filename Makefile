@@ -18,6 +18,11 @@ sepolia-deploy: test
 	  --optimize --optimizer-runs 100 \
       --private-key ${SOLIDITY_STUDENT_PRIVATE_KEY}
 
+mainnet-deploy: test
+	forge script script/Deploy.s.sol:DeployScript --rpc-url mainnet --broadcast -vv --verify \
+	  --optimize --optimizer-runs 100 \
+      --private-key ${SOLIDITY_STUDENT_PRIVATE_KEY}
+
 full-scenario: build
 	cd bash && \
 	  ./action-register.sh anvil "${ANVIL_OWNER_PRIVATE_KEY}" owner && \

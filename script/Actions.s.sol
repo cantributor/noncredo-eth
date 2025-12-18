@@ -53,6 +53,7 @@ contract Actions is Script {
     function printFullReport(address payable registerProxyAddress) public {
         registerProxy = IRegister(registerProxyAddress);
         ScriptUtils.printFullReport(registerProxy);
+        console.log("Current block:", vm.getBlockNumber());
     }
 
     /**

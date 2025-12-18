@@ -19,6 +19,10 @@ initialize() {
       PRIVATE_KEY=$2
       REGISTER_PROXY_ADDRESS=${SEPOLIA_REGISTER_PROXY_ADDRESS}
     ;;
+    mainnet)
+      PRIVATE_KEY=$2
+      REGISTER_PROXY_ADDRESS=${MAINNET_REGISTER_PROXY_ADDRESS}
+    ;;
     *)
       echo "Unsupported network name $1"
       exit 1
